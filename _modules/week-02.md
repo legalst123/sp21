@@ -1,23 +1,16 @@
 ---
-title: Basic Data Structures
+week: 02
+days:
+  - date: 2019-01-27
+    events:
+      "data structures ":
+        null
+      "**Lab**{: .label } [Lab 3: Dataframe Operations & Simple Visualizations](#)":
+        null
+  - date: 2019-01-29
+    events:
+      "summary stats (mean, s.d., distributions…), collection and cleaning of traditional survey data":
+        null
+      "**Lab**{: .label } [Lab 4: Probability Distributions, Bootstrap, and Confidence Intervals](#)":
+        null
 ---
-
-Oct 5
-: [Linked Lists & Encapsulation](#)
-  : [3.1](#), [2.2](#), [2.3](#)
-
-Oct 6
-: **Section**{: .label .label-purple }[Linked Lists](#)
-  : [Solution](#)
-
-Oct 7
-: [Resizing Arrays](#)
-  : [2.4](#), [2.5](#)
-
-Oct 8
-: **Lab**{: .label .label-purple } [Resizing Arrays](#)
-
-Oct 9
-: [Runtime Analysis](#)
-  : [8.1](#), [8.2](#), [8.3](#), [8.4](#)
-: **HW 2 due**{: .label .label-red }

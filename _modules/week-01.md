@@ -1,23 +1,12 @@
 ---
-title: Introduction to Java
+week: 01
+days:
+  - date: 2019-01-22
+    events:
+      "data, prediction, law":
+        null
+      "**Lab**{: .label } [Lab 1: Anaconda setup](#)":
+        null
+      "**Lab**{: .label } [Lab 2: Intro to Jupyter Notebooks](#)":
+        null
 ---
-
-Sep 28
-: [Java & Git](#)
-  : [1.1](#)
-
-Sep 29
-: **Section**{: .label .label-purple }[Intro to Java](#)
-  : [Solution](#)
-
-Sep 30
-: [Variables & Objects](#)
-  : [1.2](#), [2.1](#)
-
-Oct 1
-: **Lab**{: .label .label-purple } [Intro to Java](#)
-
-Oct 2
-: [Tracing, IntLists, & Recursion](#)
-  : [2.1](#)
-: **HW 1 due**{: .label .label-red }
