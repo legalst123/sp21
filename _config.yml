@@ -13,7 +13,7 @@
 # you will see them accessed via {{ site.title }}, {{ site.github_repo }}, and so on.
 # You can create any custom variable you would like, and they will be accessible
 # in the templates via {{ site.myvariable }}.
-title: LEGALST 123, Spring 2020
+title: LEGALST 123, Spring 2021
 description: Data, Prediction, and Law
 author: Violet Yao
 email: violetyao@berkeley.edu
