@@ -64,7 +64,6 @@ defaults:
       type: staffers
     values:
       layout: staffer
-      subpath: '/assets/images/'
 
 compress_html:
   clippings: all
