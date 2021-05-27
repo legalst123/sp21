@@ -1,0 +1,2604 @@
+<h1 id="legal-studies-123-data-investigation-project-final">Legal Studies 123 Data Investigation Project Final</h1>
+<p>Project done by: Jessica Ornowski, Ashutosh Bhadouria and Maggie Siu</p>
+<pre><code class="lang-python"><span class="hljs-title">from</span> collections <span class="hljs-keyword">import</span> Counter
+<span class="hljs-keyword">import</span> numpy <span class="hljs-keyword">as</span> np
+<span class="hljs-keyword">import</span> pandas <span class="hljs-keyword">as</span> pd
+<span class="hljs-keyword">import</span> seaborn <span class="hljs-keyword">as</span> sns
+<span class="hljs-keyword">import</span> json
+<span class="hljs-title">from</span> folium.plugins <span class="hljs-keyword">import</span> HeatMap
+<span class="hljs-keyword">import</span> numpy <span class="hljs-keyword">as</span> np
+<span class="hljs-keyword">import</span> folium
+<span class="hljs-keyword">import</span> json
+<span class="hljs-keyword">import</span> os
+
+<span class="hljs-title">from</span> scipy <span class="hljs-keyword">import</span> stats
+<span class="hljs-title">from</span> branca.colormap <span class="hljs-keyword">import</span> linear
+<span class="hljs-keyword">import</span> branca.colormap
+
+%matplotlib inline
+<span class="hljs-keyword">import</span> matplotlib.pyplot <span class="hljs-keyword">as</span> plt
+</code></pre>
+<h2 id="introduction">Introduction</h2>
+<p>Climate change has been one of the most widely talked about topics in the past two decades. There is compiling evidence that increasing global temperatures and rising sea levels are the result of human activity. Scientists warn that if we do not take action now to curb greenhouse gas emissions by changing our consumption habits, we will see a temperature rise of 2.5 to 10 degrees Fahrenheit over the next century accompanied by a rise in sea levels of 1-8 feet by 2100, ultimately making our planet completely uninhabitable (Shaftel et al., 2021). </p>
+<p>As we see increasing atmospheric carbon dioxide levels—from 300 parts per million in 1950 to about 400 parts per million in 2010—and even more frequent extreme weather conditions, an increasing number of countries, organizations, businesses, and individuals begin to understand the imminent challenge we face. There is now a search for climate change solutions such as creating environmental regulations, investing in research and development, reducing meat consumption, and moving to renewable energy.</p>
+<h2 id="motivation-and-research-question">Motivation and Research Question</h2>
+<p>Our personal experiences with climate change coupled with the work done by other researchers provide the inspiration and theoretical foundation for our research. Our goal is to conduct a comprehensive study on the climate change crisis to help policymakers make better informed decisions, mainly on the country level. </p>
+<p>Our study will consist of three main parts. We will first examine whether countries or certain groups of people across countries are disproportionately affected by the adverse impacts of climate change by comparing how much a country contributes to the climate change crisis and how much they are affected by climate change. Greenhouse gas emissions and changes in temperatures will be used as metrics for this portion of our study. We will then assess the different types of solutions, in particularly regulations and policies, that would work best to reduce climate change impacts. We will use a propensity score matching model to help us establish a causal relationship between climate change impacts and policy-related interventions based on past data to evaluate the impact of different policy programs. Finally, we will use predictive modeling to determine whether a country will meet their climate pledges given the goals they have set for themselves. We plan to use climate change indicator data to train our model on countries&#39; past performance in acheiving (or not acheiving) their goals and then use this model to predict adherence to future goals.</p>
+<h2 id="data-collection-and-cleaning">Data Collection and Cleaning</h2>
+<p>The datasets are downloaded from varied online sources, such as Kaggle and World Bank data catalog. All the datasets are open access and have been referenced accordingly in our study.</p>
+<p>The data files are downloaded and modified to .csv format. The data is then cleaned to remove NaN values and displayed as panda dataframes below.</p>
+<p><strong>Average temperature</strong> [State/region level granularity]</p>
+<pre><code class="lang-python"><span class="hljs-meta"># Global land Temperatures Link</span>
+<span class="hljs-meta"># Link: https://www.kaggle.com/berkeleyearth/climate-change-earth-surface-temperature-data</span>
+<span class="hljs-meta"># Date Accessed:22 March 2021</span>
+
+temp_data = pd.read_csv(<span class="hljs-string">'GlobalLandTemperaturesByState.csv'</span>)
+
+<span class="hljs-meta"># Clearing out NaN rows and adding year column</span>
+temp_data[<span class="hljs-string">"Year"</span>] = pd.to_datetime(temp_data[<span class="hljs-string">"dt"</span>]).dt.year
+temp_data = temp_data.dropna(axis=<span class="hljs-number">0</span>,how=<span class="hljs-string">"any"</span>)
+temp_data.sample(<span class="hljs-number">1</span>)
+</code></pre>
+<p><strong>Greenhouse Gas emissions</strong> [country level granularity]</p>
+<pre><code class="lang-python"><span class="hljs-meta"># Greenhouse Gas emissions (country level granularity)</span>
+<span class="hljs-meta"># Link: https://www.kaggle.com/unitednations/international-greenhouse-gas-emissions</span>
+<span class="hljs-meta"># Date Accessed: 22 March 2021</span>
+
+ghg_emissions = pd.read_csv(<span class="hljs-string">'greenhouse_gas_inventory_data_country.csv'</span>)
+
+<span class="hljs-meta"># Extracting data for US and clearing out NaN rows</span>
+ghg_emissions = ghg_emissions.dropna(axis=<span class="hljs-number">0</span>,how=<span class="hljs-string">"any"</span>)
+
+ghg_emissions.sample(<span class="hljs-number">1</span>)
+</code></pre>
+<p><strong>Climate Indicators table</strong> [Country level Granulaity]</p>
+<pre><code class="lang-python"><span class="hljs-meta"># Global Climate Change Indicators </span>
+<span class="hljs-meta"># Link: https://datacatalog.worldbank.org/dataset/climate-change-data</span>
+<span class="hljs-meta"># Date Accessed: 29 March 2021</span>
+
+indicators = pd.read_csv(<span class="hljs-string">'climatechangeindicatorsdata.csv'</span>)
+
+<span class="hljs-meta"># Global Climate Change Indicators Legend</span>
+indicators_legend = pd.read_csv(<span class="hljs-string">'indicatorslegend.csv'</span>,encoding=<span class="hljs-string">'mac_roman'</span>)
+
+<span class="hljs-meta"># Extracting data for US and clearing out NaN rows</span>
+indicators_nan = indicators.dropna(thresh=<span class="hljs-number">26</span>)
+indicators_nan.sample(<span class="hljs-number">1</span>)
+</code></pre>
+<p><strong>Carbon Tax Policies</strong> [Country Level Granularity]</p>
+<pre><code class="lang-python"># <span class="hljs-type">Global</span> <span class="hljs-type">Climate</span> policy data
+climate_policy = pd.read_csv(<span class="hljs-symbol">'carbontax_policies</span>.csv')
+
+#<span class="hljs-type">Focusing</span> only on national climate policy data
+#<span class="hljs-type">Formatting</span> <span class="hljs-type">Year</span> <span class="hljs-keyword">of</span> implementation column
+index = climate_policy[climate_policy[<span class="hljs-symbol">'Year</span> <span class="hljs-keyword">of</span> implementation'] == <span class="hljs-symbol">'TBC'</span>].index
+climate_policy.drop(index,inplace=<span class="hljs-type">True</span>)
+climate_policy[<span class="hljs-string">"Year Implemented"</span>] = pd.to_datetime(climate_policy[<span class="hljs-symbol">'Year</span> <span class="hljs-keyword">of</span> implementation']).dt.year
+climate_policy = climate_policy.drop([<span class="hljs-symbol">'Year</span> <span class="hljs-keyword">of</span> implementation'],axis=<span class="hljs-number">1</span>)
+climate_policy.sample(<span class="hljs-number">1</span>)
+</code></pre>
+<p><strong>Global Energy and Environmental policies, laws and legislature</strong> [country level granularity]</p>
+<pre><code class="lang-python"><span class="hljs-meta"># Global Climate Change Laws, policies and legislature</span>
+<span class="hljs-meta"># Link: https://climate-laws.org/legislation_and_policies</span>
+<span class="hljs-meta"># Date Accessed: 31st March 2021</span>
+
+law_climate_global = pd.read_csv(<span class="hljs-string">'laws_and_policies_global.csv'</span>,encoding=<span class="hljs-string">'mac_roman'</span>)
+
+<span class="hljs-meta"># Formatting the events column</span>
+law_climate_global[<span class="hljs-string">"Date"</span>] = pd.to_datetime(law_climate_global[<span class="hljs-string">"Events"</span>].str[<span class="hljs-number">0</span>:<span class="hljs-number">10</span>])
+law_climate_global = law_climate_global.dropna(subset=[<span class="hljs-string">"Date"</span>],axis=<span class="hljs-number">0</span>)
+law_climate_global[<span class="hljs-string">"Year"</span>] = law_climate_global[<span class="hljs-string">"Date"</span>].dt.year
+law_climate_global.head(<span class="hljs-number">1</span>)
+</code></pre>
+<p><strong>Fertility Rate</strong></p>
+<pre><code class="lang-python"><span class="hljs-meta"># Fertility Rate</span>
+<span class="hljs-meta"># Link: https://ourworldindata.org/fertility-rate</span>
+<span class="hljs-meta"># Date Accessed: 22nd April 2021</span>
+
+fertility = pd.read_csv(<span class="hljs-string">'fertility.csv'</span>)
+fertility.head(<span class="hljs-number">1</span>)
+</code></pre>
+<p><strong>GPD Per Capita</strong></p>
+<pre><code class="lang-python"><span class="hljs-meta"># GDP Per Capita</span>
+<span class="hljs-meta"># Link: https://ourworldindata.org/grapher/gdp-per-capita-maddison-2020</span>
+<span class="hljs-meta"># Date Accessed: 22nd April 2021</span>
+
+gdp = pd.read_csv(<span class="hljs-string">'GPDPC.csv'</span>)
+gdp.head(<span class="hljs-number">1</span>)
+</code></pre>
+<p><strong>Population</strong> [country level granularity]</p>
+<pre><code class="lang-python"><span class="hljs-meta"># Population</span>
+<span class="hljs-meta"># Link: https://data.worldbank.org/indicator/SP.POP.TOTL</span>
+<span class="hljs-meta"># Date Accessed: 22nd April 2021</span>
+
+population = pd.read_csv(<span class="hljs-string">'population.csv'</span>)
+population.head(<span class="hljs-number">1</span>)
+</code></pre>
+<h1 id="data-analysis-and-visualizations">Data Analysis and Visualizations</h1>
+<p><strong>Greenhouse Gas Emissions (MtCO2 equivalent)</strong></p>
+<p>The initial data is analyzed to compare the greenhouse gas emissions of countries. To aid our analysis, the countries are grouped intro European Union (EU) and Non-european union (non-EU) groups. This helps us to determine countries that have the largest change in greenhouse gas emission (metric tonnes) and their emissions are plotted below.</p>
+<pre><code class="lang-python"><span class="hljs-comment"># Indicators for GHG net emissions/removals by LUCF (MtCO2e)</span>
+<span class="hljs-attr">ind_co2</span> = ghg_emissions[ghg_emissions[<span class="hljs-string">"year"</span>].isin(np.arange(<span class="hljs-number">1990</span>,<span class="hljs-number">2010</span>))]
+<span class="hljs-attr">ind_co2</span> = ind_co2.drop(['category'], <span class="hljs-attr">axis=1)</span>
+<span class="hljs-attr">ind_co2</span> = ind_co2.reset_index().drop('index',<span class="hljs-attr">axis=1)</span>
+ind_co2.head(<span class="hljs-number">1</span>)
+</code></pre>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>country_or_area</th>
+      <th>year</th>
+      <th>value</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>Australia</td>
+      <td>2009</td>
+      <td>408448.479</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+<pre><code class="lang-python"><span class="hljs-comment"># Countries in the eu and those that are not are separated into groups</span>
+<span class="hljs-attribute">eu</span> = ind_co2[ind_co2[<span class="hljs-string">'country_or_area'</span>].isin([<span class="hljs-string">'Austria'</span>, <span class="hljs-string">'Belgium'</span>, <span class="hljs-string">'Bulgaria'</span>, <span class="hljs-string">'Czech Republic'</span>, <span class="hljs-string">'Denmark'</span>, <span class="hljs-string">'Estonia'</span>, <span class="hljs-string">'Finland'</span>, 
+<span class="hljs-string">'France'</span>, <span class="hljs-string">'Greece'</span>, <span class="hljs-string">'Hungary'</span>, <span class="hljs-string">'Ireland'</span>, <span class="hljs-string">'Italy'</span>, <span class="hljs-string">'Latvia'</span>, <span class="hljs-string">'Lithuania'</span>, <span class="hljs-string">'Luxembourg'</span>, <span class="hljs-string">'Malta'</span>, <span class="hljs-string">'Netherlands'</span>, 
+<span class="hljs-string">'Poland'</span>, <span class="hljs-string">'Portugal'</span>, <span class="hljs-string">'Romania'</span>, <span class="hljs-string">'Slovak Republic'</span>, <span class="hljs-string">'Slovenia'</span>, <span class="hljs-string">'Sweden'</span>, <span class="hljs-string">'Spain'</span>, <span class="hljs-string">'Germany'</span>,<span class="hljs-string">'Croatia'</span>])]
+</code></pre>
+<pre><code class="lang-python">europe_index = eu.set_index(<span class="hljs-string">'country_or_area'</span>)
+europe_flipped = europe_index.<span class="hljs-symbol">T</span>
+
+not_europe = ind_co2[ind_co2[<span class="hljs-string">'country_or_area'</span>].isin([<span class="hljs-string">'Austria'</span>, <span class="hljs-string">'Belgium'</span>, <span class="hljs-string">'Bulgaria'</span>, <span class="hljs-string">'Czech Republic'</span>, <span class="hljs-string">'Denmark'</span>, <span class="hljs-string">'Estonia'</span>, <span class="hljs-string">'Finland'</span>, 
+<span class="hljs-string">'France'</span>, <span class="hljs-string">'Greece'</span>, <span class="hljs-string">'Hungary'</span>, <span class="hljs-string">'Ireland'</span>, <span class="hljs-string">'Italy'</span>, <span class="hljs-string">'Latvia'</span>, <span class="hljs-string">'Lithuania'</span>, <span class="hljs-string">'Luxembourg'</span>, <span class="hljs-string">'Malta'</span>, <span class="hljs-string">'Netherlands'</span>, 
+<span class="hljs-string">'Poland'</span>, <span class="hljs-string">'Portugal'</span>, <span class="hljs-string">'Romania'</span>, <span class="hljs-string">'Slovak Republic'</span>, <span class="hljs-string">'Slovenia'</span>, <span class="hljs-string">'Sweden'</span>, <span class="hljs-string">'Spain'</span>, <span class="hljs-string">'Germany'</span>,<span class="hljs-string">'Croatia'</span>])==<span class="hljs-symbol">False</span>]
+</code></pre>
+<p><strong>Countries with the largest (absolute) change from 1990 to 2009</strong>
+In order to provide clarity in visualization, the countries with the largest change in greenhouse gas emissions were extracted from the initial greenhouse gas emissions table and broken into EU and non-EU countries for analysis.</p>
+<pre><code class="lang-python">#creating a pivot table
+europe_index1 = pd.pivot_table(europe_index,<span class="hljs-built_in">values</span>=<span class="hljs-string">"value"</span>,<span class="hljs-built_in">columns</span>=<span class="hljs-string">"year"</span>,index=<span class="hljs-string">"country_or_area"</span>)
+
+# Sorting by largest difference between <span class="hljs-number">1990</span> <span class="hljs-keyword">and</span> <span class="hljs-number">2009</span> (either positive <span class="hljs-keyword">or</span> negative)
+europe_index1['Difference'] = <span class="hljs-built_in">abs</span>(europe_index1[<span class="hljs-number">1990</span>] - europe_index1[<span class="hljs-number">2009</span>])
+europe_index_change = europe_index1.sort_values(by=<span class="hljs-string">"Difference"</span>,ascending=False)
+europe_index_change = europe_index_change.iloc[<span class="hljs-number">0</span>:<span class="hljs-number">5</span>]
+eu_change_flipped = europe_index_change.drop('Difference',axis=<span class="hljs-number">1</span>).T
+
+# Plotting the total emissions <span class="hljs-keyword">for</span> largest change countries
+fig = plt.subplots(figsize = (<span class="hljs-number">10</span>,<span class="hljs-number">6</span>), dpi = <span class="hljs-number">100</span>)
+plt.plot(eu_change_flipped)
+plt.xticks(<span class="hljs-built_in">range</span>(<span class="hljs-number">1990</span>,<span class="hljs-number">2010</span>),rotation=<span class="hljs-number">45</span>)
+plt.<span class="hljs-built_in">legend</span>(eu_change_flipped.<span class="hljs-built_in">columns</span>.<span class="hljs-built_in">values</span>,loc='upper left');
+plt.<span class="hljs-built_in">title</span>(<span class="hljs-string">"Greenhouse Gas Emissions of countries of EU countries with largest Change [1990-2009]"</span>);
+plt.<span class="hljs-built_in">xlabel</span>(<span class="hljs-string">"Year"</span>);
+plt.<span class="hljs-built_in">ylabel</span>(<span class="hljs-string">"Greenhouse Gas Emissions (kilotonne)"</span>);
+</code></pre>
+<p><img src="output_31_0.png" alt="png"></p>
+<pre><code class="lang-python"><span class="hljs-comment">#creating a pivot table</span>
+<span class="hljs-attr">not_europe_index1</span> = pd.pivot_table(not_europe_index,<span class="hljs-attr">values="value",columns="year",index="country_or_area")</span>
+
+<span class="hljs-comment"># Removing the data entry for european union</span>
+<span class="hljs-attr">not_europe_index1</span> = not_europe_index1.drop(<span class="hljs-string">"European Union"</span>,<span class="hljs-attr">axis=0)</span>
+not_europe_index1['Difference'] = abs(not_europe_index1[<span class="hljs-number">1990</span>] - not_europe_index1[<span class="hljs-number">2009</span>])
+<span class="hljs-attr">not_europe_index_change</span> = not_europe_index1.sort_values(<span class="hljs-attr">by="Difference",ascending=False)</span>
+<span class="hljs-attr">not_europe_index_change</span> = not_europe_index_change.iloc[<span class="hljs-number">0</span>:<span class="hljs-number">5</span>]
+<span class="hljs-attr">not_eu_change_flipped</span> = not_europe_index_change.drop('Difference',<span class="hljs-attr">axis=1).T</span>
+
+<span class="hljs-attr">fig</span> = plt.subplots(<span class="hljs-attr">figsize</span> = (<span class="hljs-number">10</span>,<span class="hljs-number">6</span>), <span class="hljs-attr">dpi</span> = <span class="hljs-number">100</span>)
+plt.plot(not_eu_change_flipped)
+plt.legend(not_eu_change_flipped.columns.values,<span class="hljs-attr">loc='lower</span> left');
+plt.xticks(range(<span class="hljs-number">1990</span>,<span class="hljs-number">2010</span>),<span class="hljs-attr">rotation=45)</span>
+plt.title(<span class="hljs-string">"Greenhouse Gas Emissions of countries of Non-EU countries with largest Change [1990-2009]"</span>);
+plt.xlabel(<span class="hljs-string">"Year"</span>);
+plt.ylabel(<span class="hljs-string">"Greenhouse Gas Emissions (kilotonne)"</span>);
+</code></pre>
+<p><img src="output_32_0.png" alt="png"></p>
+<p>It is interesting to note that EU countries have had a decrease in greenhouse gas emissions with Germany showing the largest decrease. Countries outside of EU have not performed as well as can be seen by the second figure. The United States has seen a steady increrase in emissions between 1990 and 2007 which falls off slighlty after 2007.</p>
+<p>European Union Countries, especially Germany, have employed strict laws and policies that aim to reduce their carbon footprint. Our initial analysis of the above graphs indicates countries that have active (and effective) climate policies. The climate policy tables are cleaned below to confirm which countries visualized above do in fact have a carbon tax, or another climate policy implemented.</p>
+<pre><code class="lang-python"># <span class="hljs-symbol">EU</span> (<span class="hljs-symbol">Germany</span>, <span class="hljs-symbol">Finland</span>, <span class="hljs-symbol">Italy</span>, <span class="hljs-symbol">France</span>, <span class="hljs-symbol">Poland</span>) have carbon tax
+climate_policy_eu = climate_policy[climate_policy[<span class="hljs-string">'Jurisdiction covered'</span>].isin([<span class="hljs-string">'Germany'</span>, <span class="hljs-string">'Finland'</span>, <span class="hljs-string">'Italy'</span>, 
+                                                                                <span class="hljs-string">'France'</span>, <span class="hljs-string">'Poland'</span>])]
+climate_policy_eu.head()
+</code></pre>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Name of the initiative</th>
+      <th>Type</th>
+      <th>Status</th>
+      <th>Type of juridiction covered</th>
+      <th>Jurisdiction covered</th>
+      <th>World Bank region</th>
+      <th>Year of abolishment</th>
+      <th>GHG emissions covered [MtCO2e]</th>
+      <th>Proportion of global GHG emissions covered</th>
+      <th>Government income, previous year</th>
+      <th>Value [billion US$]</th>
+      <th>Initiatives with overlapping GHG emissions covered</th>
+      <th>Covered GHG emissions overlapping with other initiatives [MtCO2e]</th>
+      <th>Year Implemented</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>25</th>
+      <td>Finland carbon tax</td>
+      <td>Carbon tax</td>
+      <td>Implemented</td>
+      <td>National</td>
+      <td>Finland</td>
+      <td>Europe and Central Asia</td>
+      <td>0</td>
+      <td>40.656934</td>
+      <td>0.000750</td>
+      <td>1.419630</td>
+      <td>1.419630</td>
+      <td>EU ETS</td>
+      <td>15.043065</td>
+      <td>1990</td>
+    </tr>
+    <tr>
+      <th>26</th>
+      <td>France carbon tax</td>
+      <td>Carbon tax</td>
+      <td>Implemented</td>
+      <td>National</td>
+      <td>France</td>
+      <td>Europe and Central Asia</td>
+      <td>0</td>
+      <td>171.657987</td>
+      <td>0.003169</td>
+      <td>8.967523</td>
+      <td>8.967523</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>2014</td>
+    </tr>
+    <tr>
+      <th>28</th>
+      <td>Germany ETS</td>
+      <td>ETS</td>
+      <td>Scheduled</td>
+      <td>National</td>
+      <td>Germany</td>
+      <td>Europe and Central Asia</td>
+      <td>0</td>
+      <td>398.620400</td>
+      <td>0.007358</td>
+      <td>NaN</td>
+      <td>0.000000</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>2021</td>
+    </tr>
+    <tr>
+      <th>61</th>
+      <td>Poland carbon tax</td>
+      <td>Carbon tax</td>
+      <td>Implemented</td>
+      <td>National</td>
+      <td>Poland</td>
+      <td>Europe and Central Asia</td>
+      <td>0</td>
+      <td>16.091961</td>
+      <td>0.000297</td>
+      <td>0.001118</td>
+      <td>0.001118</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>1990</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+<pre><code class="lang-python"># <span class="hljs-symbol">EU</span> law climate table
+law_climate_eu = law_climate_global[law_climate_global[<span class="hljs-string">'Geography'</span>].isin([<span class="hljs-string">'Germany'</span>, <span class="hljs-string">'Finland'</span>, <span class="hljs-string">'Italy'</span>, 
+                                                                                <span class="hljs-string">'France'</span>, <span class="hljs-string">'Poland'</span>])]
+germany = law_climate_global[law_climate_global[<span class="hljs-string">'Geography'</span>]==<span class="hljs-string">'Germany'</span>]
+finland = law_climate_global[law_climate_global[<span class="hljs-string">'Geography'</span>]==<span class="hljs-string">'Finland'</span>]
+italy = law_climate_global[law_climate_global[<span class="hljs-string">'Geography'</span>]==<span class="hljs-string">'Italy'</span>]
+france = law_climate_global[law_climate_global[<span class="hljs-string">'Geography'</span>]==<span class="hljs-string">'France'</span>]
+poland = law_climate_global[law_climate_global[<span class="hljs-string">'Geography'</span>]==<span class="hljs-string">'Poland'</span>]
+</code></pre>
+<pre><code class="lang-python"># <span class="hljs-symbol">Not</span> <span class="hljs-symbol">EU</span> (<span class="hljs-symbol">Canada</span>, <span class="hljs-symbol">Russian</span> <span class="hljs-symbol">Federation</span>, <span class="hljs-symbol">Turkey</span>, <span class="hljs-symbol">Ukraine</span>, <span class="hljs-symbol">United</span> <span class="hljs-symbol">States</span>) only climate policy
+climate_policy_other = climate_policy[climate_policy[<span class="hljs-string">'Jurisdiction covered'</span>].isin([<span class="hljs-string">'Canada'</span>, 
+                                                                                               <span class="hljs-string">'Russian Federation'</span>, 
+                                                                                               <span class="hljs-string">'Turkey'</span>, <span class="hljs-string">'Ukraine'</span>, 
+                                                                                               <span class="hljs-string">'United States'</span>])]
+climate_policy_other.head()
+</code></pre>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Name of the initiative</th>
+      <th>Type</th>
+      <th>Status</th>
+      <th>Type of juridiction covered</th>
+      <th>Jurisdiction covered</th>
+      <th>World Bank region</th>
+      <th>Year of abolishment</th>
+      <th>GHG emissions covered [MtCO2e]</th>
+      <th>Proportion of global GHG emissions covered</th>
+      <th>Government income, previous year</th>
+      <th>Value [billion US$]</th>
+      <th>Initiatives with overlapping GHG emissions covered</th>
+      <th>Covered GHG emissions overlapping with other initiatives [MtCO2e]</th>
+      <th>Year Implemented</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>12</th>
+      <td>Canada federal OBPS</td>
+      <td>ETS</td>
+      <td>Implemented</td>
+      <td>National</td>
+      <td>Canada</td>
+      <td>North America</td>
+      <td>0</td>
+      <td>70.948687</td>
+      <td>0.001310</td>
+      <td>NaN</td>
+      <td>0.000000</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>2019</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>Canada federal fuel charge</td>
+      <td>Carbon tax</td>
+      <td>Implemented</td>
+      <td>National</td>
+      <td>Canada</td>
+      <td>North America</td>
+      <td>0</td>
+      <td>155.334199</td>
+      <td>0.002867</td>
+      <td>1.371070</td>
+      <td>3.010832</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>2019</td>
+    </tr>
+    <tr>
+      <th>89</th>
+      <td>Ukraine carbon tax</td>
+      <td>Carbon tax</td>
+      <td>Implemented</td>
+      <td>National</td>
+      <td>Ukraine</td>
+      <td>Europe and Central Asia</td>
+      <td>0</td>
+      <td>221.221332</td>
+      <td>0.004083</td>
+      <td>0.047692</td>
+      <td>0.047692</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>2011</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+<pre><code class="lang-python">law_climate_other = law_climate_global[law_climate_global[<span class="hljs-string">'Geography'</span>].isin([<span class="hljs-string">'Canada'</span>,<span class="hljs-string">'Russian Federation'</span>, 
+                                                                                               <span class="hljs-string">'Turkey'</span>, <span class="hljs-string">'Ukraine'</span>, 
+                                                                                               <span class="hljs-string">'United States'</span>])]
+law_climate_other.head()
+</code></pre>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Title</th>
+      <th>Type</th>
+      <th>Geography</th>
+      <th>Geography ISO</th>
+      <th>Frameworks</th>
+      <th>Responses</th>
+      <th>Instruments</th>
+      <th>Document Types</th>
+      <th>Natural Hazards</th>
+      <th>Keywords</th>
+      <th>Sectors</th>
+      <th>Events</th>
+      <th>Documents</th>
+      <th>Parent Legislation</th>
+      <th>Description</th>
+      <th>Date</th>
+      <th>Year</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>321</th>
+      <td>Energy Efficiency Act (S.C. 1992, c. 36)</td>
+      <td>legislative</td>
+      <td>Canada</td>
+      <td>CAN</td>
+      <td>NaN</td>
+      <td>Mitigation</td>
+      <td>NaN</td>
+      <td>Law</td>
+      <td>NaN</td>
+      <td>Energy Demand</td>
+      <td>Energy</td>
+      <td>25/12/1992|Law passed;25/12/2008|Last amended</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>The Act aims to establish minimum energy effic...</td>
+      <td>1992-12-25</td>
+      <td>1992</td>
+    </tr>
+    <tr>
+      <th>322</th>
+      <td>Canada Foundation for Sustainable Development ...</td>
+      <td>legislative</td>
+      <td>Canada</td>
+      <td>CAN</td>
+      <td>NaN</td>
+      <td>Mitigation</td>
+      <td>NaN</td>
+      <td>Law</td>
+      <td>NaN</td>
+      <td>Energy Supply</td>
+      <td>Health, Water</td>
+      <td>14/06/2001|Law passed</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>This Act establishes a not-for-profit foundati...</td>
+      <td>2001-06-14</td>
+      <td>2001</td>
+    </tr>
+    <tr>
+      <th>323</th>
+      <td>The Canadian Environmental Protection Act 1999...</td>
+      <td>legislative</td>
+      <td>Canada</td>
+      <td>CAN</td>
+      <td>NaN</td>
+      <td>Mitigation</td>
+      <td>NaN</td>
+      <td>Law</td>
+      <td>NaN</td>
+      <td>Carbon Pricing, Energy Supply, Energy Demand, ...</td>
+      <td>Energy, Transportation, Waste, Water</td>
+      <td>31/03/2000|Law passed||</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>&lt;div&gt;The CEPA 1999, or the Canadian Environmen...</td>
+      <td>2000-03-31</td>
+      <td>2000</td>
+    </tr>
+    <tr>
+      <th>324</th>
+      <td>Heavy-duty Vehicle and Engine Greenhouse Gas E...</td>
+      <td>executive</td>
+      <td>Canada</td>
+      <td>CAN</td>
+      <td>NaN</td>
+      <td>Mitigation</td>
+      <td>Standards and obligations|Regulation</td>
+      <td>Regulation/Rules</td>
+      <td>NaN</td>
+      <td>Transportation</td>
+      <td>Transportation</td>
+      <td>22/02/2013|Law passed||;16/07/2015|Amended||;1...</td>
+      <td>Full text|<a href="https://climate-laws.org/rails/activ">https://climate-laws.org/rails/activ</a>...</td>
+      <td>The Canadian Environmental Protection Act 1999...</td>
+      <td>&lt;div&gt;The purpose of these Regulations is to re...</td>
+      <td>2013-02-22</td>
+      <td>2013</td>
+    </tr>
+    <tr>
+      <th>325</th>
+      <td>Reduction of Carbon Dioxide Emissions from Coa...</td>
+      <td>executive</td>
+      <td>Canada</td>
+      <td>CAN</td>
+      <td>NaN</td>
+      <td>Mitigation</td>
+      <td>Standards and obligations|Regulation;Monitorin...</td>
+      <td>Regulation/Rules</td>
+      <td>NaN</td>
+      <td>Energy Supply, Coal, Electricity</td>
+      <td>Energy, Transportation</td>
+      <td>25/12/2012|Law passed||;01/07/2015|Amended by ...</td>
+      <td>Full text|<a href="https://climate-laws.org/rails/activ">https://climate-laws.org/rails/activ</a>...</td>
+      <td>The Canadian Environmental Protection Act 1999...</td>
+      <td>&lt;div&gt;&amp;nbsp;These Regulations establish a regim...</td>
+      <td>2012-12-25</td>
+      <td>2012</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+<p>Overall, it is clear that EU countries have more consistently implemented climate policies.</p>
+<p><strong>Analyzing Average Temperature changes of countries [1990-2009]</strong></p>
+<pre><code class="lang-python">grouped_temp = temp_data.groupby(<span class="hljs-string">'Country'</span>)[<span class="hljs-string">'State'</span>].count().reset_index()
+grouped_temp<span class="hljs-selector-class">.Country</span><span class="hljs-selector-class">.values</span>
+</code></pre>
+<pre><code><span class="hljs-keyword">array</span>([<span class="hljs-string">'Australia'</span>, <span class="hljs-string">'Brazil'</span>, <span class="hljs-string">'Canada'</span>, <span class="hljs-string">'China'</span>, <span class="hljs-string">'India'</span>, <span class="hljs-string">'Russia'</span>,
+       <span class="hljs-string">'United States'</span>], dtype=<span class="hljs-keyword">object</span>)
+</code></pre><pre><code class="lang-python">temp_use = temp_data[temp_data['Year'].isin(np.arange(<span class="hljs-number">1990</span>,<span class="hljs-number">2010</span>))]
+temp_use.head(<span class="hljs-number">1</span>)
+</code></pre>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>dt</th>
+      <th>AverageTemperature</th>
+      <th>AverageTemperatureUncertainty</th>
+      <th>State</th>
+      <th>Country</th>
+      <th>Year</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>1616</th>
+      <td>1/1/1990</td>
+      <td>25.881</td>
+      <td>0.297</td>
+      <td>Acre</td>
+      <td>Brazil</td>
+      <td>1990</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+<pre><code class="lang-python">temp_data_country = temp_use[temp_use[<span class="hljs-string">'Country'</span>].isin([<span class="hljs-string">'Australia'</span>, <span class="hljs-string">'Brazil'</span>, <span class="hljs-string">'Canada'</span>, <span class="hljs-string">'China'</span>, <span class="hljs-string">'India'</span>, <span class="hljs-string">'Russia'</span>,<span class="hljs-string">'United States'</span>])]
+temp_data_country = temp_data_country.drop([<span class="hljs-string">"State"</span>,<span class="hljs-string">"AverageTemperatureUncertainty"</span>,<span class="hljs-string">"dt"</span>],axis=<span class="hljs-number">1</span>)
+fig, scatter = plt.subplots(figsize = (<span class="hljs-number">10</span>,<span class="hljs-number">6</span>), dpi = <span class="hljs-number">100</span>)
+sns.set_style(<span class="hljs-string">"ticks"</span>)
+scatter = sns.lineplot(x=<span class="hljs-string">"Year"</span>, y = <span class="hljs-string">"AverageTemperature"</span>,data=temp_data_country,hue=<span class="hljs-string">"Country"</span>,style=<span class="hljs-string">"Country"</span>,markers=<span class="hljs-symbol">True</span>,dashes=<span class="hljs-symbol">False</span>,hue_order=[<span class="hljs-string">'Australia'</span>, <span class="hljs-string">'Brazil'</span>, <span class="hljs-string">'Canada'</span>, <span class="hljs-string">'China'</span>, <span class="hljs-string">'India'</span>, <span class="hljs-string">'Russia'</span>,<span class="hljs-string">'United States'</span>])
+plt.title(<span class="hljs-string">"Average Temperature [1990-2009]"</span>);
+plt.xlabel(<span class="hljs-string">"Year"</span>);
+plt.ylabel(<span class="hljs-string">"Average Temperature (C)"</span>);
+scatter.set_xticks(range(<span class="hljs-number">1990</span>,<span class="hljs-number">2010</span>));
+plt.xticks(rotation=<span class="hljs-number">45</span>);
+</code></pre>
+<p><img src="output_43_0.png" alt="png"></p>
+<p>As seen from the graph above, the countries vary in their average temperature across the years. Repeated values of state temperatures for each country are aggregated to show the mean and 95% confidence interval in the figure above. Polar countries like Canada and Russia have a lower average temperature all while tropical countries such as Brazil and India have much higher average temperature. </p>
+<p>Because of this it is difficult to see any trends or analyze the temperature changes across the years. To better understand how temperature changes, we constructed a function (norm) that normalizes a given temperature based on the low and high temperature. This is then applied to the above countries and a graph is obtained below. </p>
+<pre><code class="lang-python"># Defining a normalizing function to take into account temperature maximums <span class="hljs-keyword">and</span> minimums
+def norm(<span class="hljs-built_in">array</span>):
+    low = <span class="hljs-built_in">min</span>(<span class="hljs-built_in">array</span>)
+    high = <span class="hljs-built_in">max</span>(<span class="hljs-built_in">array</span>)
+    <span class="hljs-built_in">new</span> = []
+    <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">np</span>.arange(len(<span class="hljs-built_in">array</span>)):
+        norm = (i - low)/(high-low)
+        <span class="hljs-built_in">new</span>.<span class="hljs-built_in">append</span>(norm)
+    <span class="hljs-built_in">return</span> <span class="hljs-built_in">new</span>
+</code></pre>
+<pre><code class="lang-python"><span class="hljs-comment"># First average over each year among states, then normalize </span>
+<span class="hljs-attr">braz</span> = temp_use[temp_use[<span class="hljs-string">'Country'</span>]==<span class="hljs-string">'Brazil'</span>].groupby(<span class="hljs-string">'Year'</span>)[<span class="hljs-string">'AverageTemperature'</span>].mean().to_list()
+<span class="hljs-attr">aus</span> = temp_use[temp_use[<span class="hljs-string">'Country'</span>]==<span class="hljs-string">'Australia'</span>].groupby(<span class="hljs-string">'Year'</span>)[<span class="hljs-string">'AverageTemperature'</span>].mean().to_list()
+<span class="hljs-attr">can</span> = temp_use[temp_use[<span class="hljs-string">'Country'</span>]==<span class="hljs-string">'Canada'</span>].groupby(<span class="hljs-string">'Year'</span>)[<span class="hljs-string">'AverageTemperature'</span>].mean().to_list()
+<span class="hljs-attr">chin</span> = temp_use[temp_use[<span class="hljs-string">'Country'</span>]==<span class="hljs-string">'China'</span>].groupby(<span class="hljs-string">'Year'</span>)[<span class="hljs-string">'AverageTemperature'</span>].mean().to_list()
+<span class="hljs-attr">ind</span> = temp_use[temp_use[<span class="hljs-string">'Country'</span>]==<span class="hljs-string">'India'</span>].groupby(<span class="hljs-string">'Year'</span>)[<span class="hljs-string">'AverageTemperature'</span>].mean().to_list()
+<span class="hljs-attr">rus</span> = temp_use[temp_use[<span class="hljs-string">'Country'</span>]==<span class="hljs-string">'Russia'</span>].groupby(<span class="hljs-string">'Year'</span>)[<span class="hljs-string">'AverageTemperature'</span>].mean().to_list()
+<span class="hljs-attr">us</span> = temp_use[temp_use[<span class="hljs-string">'Country'</span>]==<span class="hljs-string">'United States'</span>].groupby(<span class="hljs-string">'Year'</span>)[<span class="hljs-string">'AverageTemperature'</span>].mean().to_list()
+<span class="hljs-attr">together</span> = braz + aus + can + chin + ind + rus + us
+<span class="hljs-attr">high</span> = max(together)
+<span class="hljs-attr">low</span> = min(together)
+</code></pre>
+<pre><code class="lang-python">n_braz = norm(braz)
+n_aus = norm(aus)
+n_can = norm(can)
+n_chin = norm(chin)
+n_ind = norm(ind)
+n_rus = norm(rus)
+n_us = norm(us)
+years = np.arange(<span class="hljs-number">1990</span>,<span class="hljs-number">2010</span>)
+normed_temp = pd.DataFrame({<span class="hljs-string">'Australia'</span><span class="hljs-symbol">:n_aus</span>,<span class="hljs-string">'Brazil'</span><span class="hljs-symbol">:n_braz</span>,<span class="hljs-string">'Canada'</span><span class="hljs-symbol">:n_can</span>,<span class="hljs-string">'China'</span><span class="hljs-symbol">:n_chin</span>,
+                            <span class="hljs-string">'India'</span><span class="hljs-symbol">:n_ind</span>,<span class="hljs-string">'Russia'</span><span class="hljs-symbol">:n_rus</span>,<span class="hljs-string">'United States'</span><span class="hljs-symbol">:n_us</span>})
+normed_temp[<span class="hljs-string">'Year'</span>] = np.arange(<span class="hljs-number">1990</span>,<span class="hljs-number">2010</span>)
+normed_temp = normed_temp.set_index(<span class="hljs-string">'Year'</span>)
+normed_temp.head(<span class="hljs-number">1</span>)
+</code></pre>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Australia</th>
+      <th>Brazil</th>
+      <th>Canada</th>
+      <th>China</th>
+      <th>India</th>
+      <th>Russia</th>
+      <th>United States</th>
+    </tr>
+    <tr>
+      <th>Year</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>1990</th>
+      <td>-17.424459</td>
+      <td>-31.104308</td>
+      <td>0.713512</td>
+      <td>-9.19949</td>
+      <td>-20.978809</td>
+      <td>-0.792588</td>
+      <td>-6.395877</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+<pre><code class="lang-python">fig = plt.<span class="hljs-keyword">subplots(figsize </span>= (<span class="hljs-number">10</span>,<span class="hljs-number">6</span>), dpi = <span class="hljs-number">100</span>)
+plt.plot(<span class="hljs-keyword">normed_temp)
+</span>plt.legend(<span class="hljs-keyword">normed_temp.columns.values);
+</span>plt.title(<span class="hljs-string">"Normalized Average Temperature [1990-2009]"</span>)<span class="hljs-comment">;</span>
+plt.xlabel(<span class="hljs-string">"Year"</span>)<span class="hljs-comment">;</span>
+plt.ylabel(<span class="hljs-string">"Normalized Average Temperature (C)"</span>)<span class="hljs-comment">;</span>
+plt.xticks(range(<span class="hljs-number">1990</span>,<span class="hljs-number">2010</span>))<span class="hljs-comment">;</span>
+plt.xticks(rotation=<span class="hljs-number">45</span>)<span class="hljs-comment">;</span>
+</code></pre>
+<p><img src="output_48_0.png" alt="png"></p>
+<p>This graph is a much better representation of average temperature after it has been normalized by each region. The visualization above clearly shows that the temperature in the represented countries has been on a steady increase since 1990.</p>
+<p><strong>Gross National Income and Greenhouse Gas Emissions Relationship</strong></p>
+<p>This section explores the differing climate change effects on the country level and helps us build a foundational understanding for <code>Part One</code> of our study. The following analysis is an attempt to examine how climate change disproportionately affects different countries, putting an emphasis on the differential impacts of climate change between countries with significant variance in income per capita.</p>
+<pre><code class="lang-python">gni = indicators_nan[indicators_nan[<span class="hljs-string">'Series code'</span>]==<span class="hljs-string">'NY.GNP.PCAP.CD'</span>]
+gni_ours = gni[gni[<span class="hljs-string">'Country name'</span>].isin([<span class="hljs-string">'Australia'</span>, <span class="hljs-string">'Brazil'</span>,<span class="hljs-string">'Canada'</span>,
+                                                              <span class="hljs-string">'China'</span>, <span class="hljs-string">'India'</span>, <span class="hljs-string">'Russian Federation'</span>, <span class="hljs-string">'United States'</span>])].drop([<span class="hljs-string">'Country code'</span>,<span class="hljs-string">'Series code'</span>,
+                                                                           <span class="hljs-string">'Series name'</span>, <span class="hljs-string">'SCALE'</span>, <span class="hljs-string">'Decimals'</span>, 
+                                                                           <span class="hljs-string">'2010'</span>, <span class="hljs-string">'2011'</span>], axis=<span class="hljs-number">1</span>).set_index(<span class="hljs-string">'Country name'</span>)
+gni_use = gni_ours.<span class="hljs-symbol">T</span>
+gni_use.head(<span class="hljs-number">1</span>)
+</code></pre>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Country name</th>
+      <th>Australia</th>
+      <th>Brazil</th>
+      <th>Canada</th>
+      <th>China</th>
+      <th>India</th>
+      <th>Russian Federation</th>
+      <th>United States</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>1990</th>
+      <td>17420.0</td>
+      <td>2700.0</td>
+      <td>20150.0</td>
+      <td>330.0</td>
+      <td>390.0</td>
+      <td>NaN</td>
+      <td>23260.0</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+<pre><code class="lang-python">fig = plt.subplots(figsize = (<span class="hljs-number">10</span>,<span class="hljs-number">6</span>), dpi = <span class="hljs-number">100</span>)
+plt.plot(gni_use)
+plt.<span class="hljs-built_in">legend</span>(gni_use.<span class="hljs-built_in">columns</span>.<span class="hljs-built_in">values</span>)
+plt.xticks(rotation=<span class="hljs-number">45</span>);
+plt.<span class="hljs-built_in">title</span>(<span class="hljs-string">"Gross National Income (GNI) per capita in USD [1990-2009]"</span>);
+plt.<span class="hljs-built_in">xlabel</span>(<span class="hljs-string">"Year"</span>);
+plt.<span class="hljs-built_in">ylabel</span>(<span class="hljs-string">"Gross National Income per Capita ($)"</span>);
+</code></pre>
+<p><img src="output_53_0.png" alt="png"></p>
+<p>Gathering GHG data for same countries</p>
+<pre><code class="lang-python">per_cap_ghg = indicators[indicators[<span class="hljs-string">'Series code'</span>]==<span class="hljs-string">'EN.ATM.CO2E.PC'</span>]
+our_ghg = per_cap_ghg[per_cap_ghg[<span class="hljs-string">'Country name'</span>].isin([<span class="hljs-string">'Australia'</span>, <span class="hljs-string">'Brazil'</span>,<span class="hljs-string">'Canada'</span>,
+                                                              <span class="hljs-string">'China'</span>, <span class="hljs-string">'India'</span>, <span class="hljs-string">'Russian Federation'</span>, <span class="hljs-string">'United States'</span>])]
+our_ghg.head(<span class="hljs-number">1</span>)
+</code></pre>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Country code</th>
+      <th>Country name</th>
+      <th>Series code</th>
+      <th>Series name</th>
+      <th>SCALE</th>
+      <th>Decimals</th>
+      <th>1990</th>
+      <th>1991</th>
+      <th>1992</th>
+      <th>1993</th>
+      <th>...</th>
+      <th>2002</th>
+      <th>2003</th>
+      <th>2004</th>
+      <th>2005</th>
+      <th>2006</th>
+      <th>2007</th>
+      <th>2008</th>
+      <th>2009</th>
+      <th>2010</th>
+      <th>2011</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>1874</th>
+      <td>AUS</td>
+      <td>Australia</td>
+      <td>EN.ATM.CO2E.PC</td>
+      <td>CO2 emissions per capita (metric tons)</td>
+      <td>0</td>
+      <td>1</td>
+      <td>16.84</td>
+      <td>16.29</td>
+      <td>16.83</td>
+      <td>17.1</td>
+      <td>...</td>
+      <td>17.37</td>
+      <td>17.41</td>
+      <td>17.35</td>
+      <td>18.01</td>
+      <td>18.23</td>
+      <td>18.07</td>
+      <td>18.57</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+  </tbody>
+</table>
+<p>1 rows × 28 columns</p>
+</div>
+
+
+
+
+<pre><code class="lang-python">ghg_data = our_ghg.drop([<span class="hljs-symbol">'Country</span> code',<span class="hljs-symbol">'Series</span> code',<span class="hljs-symbol">'Series</span> name', <span class="hljs-symbol">'SCALE'</span>, 
+                                 <span class="hljs-symbol">'Decimals'</span>, <span class="hljs-string">'2010'</span>, <span class="hljs-string">'2011'</span>], axis=<span class="hljs-number">1</span>).set_index(<span class="hljs-symbol">'Country</span> name')
+ghg_data_flip = ghg_data.<span class="hljs-type">T</span>
+column_means = ghg_data_flip.mean<span class="hljs-literal">()</span>
+ghg_user = ghg_data_flip.fillna(column_means)
+ghg_user.head(<span class="hljs-number">1</span>)
+</code></pre>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Country name</th>
+      <th>Australia</th>
+      <th>Brazil</th>
+      <th>Canada</th>
+      <th>China</th>
+      <th>India</th>
+      <th>Russian Federation</th>
+      <th>United States</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>1990</th>
+      <td>16.84</td>
+      <td>1.4</td>
+      <td>16.2</td>
+      <td>2.17</td>
+      <td>0.81</td>
+      <td>11.488824</td>
+      <td>19.55</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+<pre><code class="lang-python">fig = plt.subplots(figsize = (<span class="hljs-number">10</span>,<span class="hljs-number">6</span>), dpi = <span class="hljs-number">100</span>)
+plt.plot(ghg_user)
+plt.xticks(rotation=<span class="hljs-number">45</span>)
+plt.<span class="hljs-built_in">legend</span>(ghg_user.<span class="hljs-built_in">columns</span>.<span class="hljs-built_in">values</span>);
+plt.<span class="hljs-built_in">title</span>(<span class="hljs-string">"Greenhouse Gas (GHG) Emissions per capita in metric tonnes  [1990-2009]"</span>);
+plt.<span class="hljs-built_in">xlabel</span>(<span class="hljs-string">"Year"</span>);
+plt.<span class="hljs-built_in">ylabel</span>(<span class="hljs-string">"Greenhouse Gas Emissions per capita (metric tons)"</span>);
+</code></pre>
+<p><img src="output_57_0.png" alt="png"></p>
+<pre><code class="lang-python">fig = plt.subplots(figsize = (<span class="hljs-number">10</span>,<span class="hljs-number">6</span>), dpi = <span class="hljs-number">100</span>)
+plt.scatter(ghg_user[<span class="hljs-string">'Australia'</span>], gni_use[<span class="hljs-string">'Australia'</span>],<span class="hljs-keyword">label</span><span class="bash">=<span class="hljs-string">'Australia'</span>)
+</span>plt.scatter(ghg_user[<span class="hljs-string">'Brazil'</span>], gni_use[<span class="hljs-string">'Brazil'</span>],<span class="hljs-keyword">label</span><span class="bash">=<span class="hljs-string">'Brazil'</span>)
+</span>plt.scatter(ghg_user[<span class="hljs-string">'Canada'</span>], gni_use[<span class="hljs-string">'Canada'</span>],<span class="hljs-keyword">label</span><span class="bash">=<span class="hljs-string">'Canada'</span>)
+</span>plt.scatter(ghg_user[<span class="hljs-string">'China'</span>], gni_use[<span class="hljs-string">'China'</span>],<span class="hljs-keyword">label</span><span class="bash">=<span class="hljs-string">'China'</span>)
+</span>plt.scatter(ghg_user[<span class="hljs-string">'India'</span>], gni_use[<span class="hljs-string">'India'</span>],<span class="hljs-keyword">label</span><span class="bash">=<span class="hljs-string">'India'</span>)
+</span>plt.scatter(ghg_user[<span class="hljs-string">'Russian Federation'</span>], gni_use[<span class="hljs-string">'Russian Federation'</span>],<span class="hljs-keyword">label</span><span class="bash">=<span class="hljs-string">'Russian Federation'</span>)
+</span>plt.scatter(ghg_user[<span class="hljs-string">'United States'</span>], gni_use[<span class="hljs-string">'United States'</span>],<span class="hljs-keyword">label</span><span class="bash">=<span class="hljs-string">'United States'</span>,color=<span class="hljs-string">'pink'</span>)
+</span>plt.legend()
+plt.xlabel(<span class="hljs-string">'Greenhouse gas emissions per capita (metric tonnes)'</span>)
+plt.ylabel(<span class="hljs-string">'GNI per capita ($)'</span>)
+plt.title(<span class="hljs-string">'GNI vs GHG per capita'</span>);
+</code></pre>
+<p><img src="output_58_0.png" alt="png"></p>
+<p>This visualization provides clear evidence that GNI per capita and GHG emissions per capita are strongly positively correlated. Looking at these specific seven countries, those with low GNI per capita have low GHG emissions and those with high GNI per capita have high GHG emissions per capita. The only slight anomaly is Russia, which has a low GNI per capita (comparable to India, Brazil, and China) but relatively high GHG emissions per capita.</p>
+<p><strong>Plotting GHG and Average Temperature over 20 year period, with markers for years that climate policies were implemented.</strong></p>
+<pre><code class="lang-python">brazt = temp_use[temp_use[<span class="hljs-string">'Country'</span>]==<span class="hljs-string">'Brazil'</span>].groupby(<span class="hljs-string">'Year'</span>)[<span class="hljs-string">'AverageTemperature'</span>].mean().to_list()
+aust = temp_use[temp_use[<span class="hljs-string">'Country'</span>]==<span class="hljs-string">'Australia'</span>].groupby(<span class="hljs-string">'Year'</span>)[<span class="hljs-string">'AverageTemperature'</span>].mean().to_list()
+cant = temp_use[temp_use[<span class="hljs-string">'Country'</span>]==<span class="hljs-string">'Canada'</span>].groupby(<span class="hljs-string">'Year'</span>)[<span class="hljs-string">'AverageTemperature'</span>].mean().to_list()
+chint = temp_use[temp_use[<span class="hljs-string">'Country'</span>]==<span class="hljs-string">'China'</span>].groupby(<span class="hljs-string">'Year'</span>)[<span class="hljs-string">'AverageTemperature'</span>].mean().to_list()
+indt = temp_use[temp_use[<span class="hljs-string">'Country'</span>]==<span class="hljs-string">'India'</span>].groupby(<span class="hljs-string">'Year'</span>)[<span class="hljs-string">'AverageTemperature'</span>].mean().to_list()
+rust = temp_use[temp_use[<span class="hljs-string">'Country'</span>]==<span class="hljs-string">'Russia'</span>].groupby(<span class="hljs-string">'Year'</span>)[<span class="hljs-string">'AverageTemperature'</span>].mean().to_list()
+ust = temp_use[temp_use[<span class="hljs-string">'Country'</span>]==<span class="hljs-string">'United States'</span>].groupby(<span class="hljs-string">'Year'</span>)[<span class="hljs-string">'AverageTemperature'</span>].mean().to_list()
+avg_temp = pd.<span class="hljs-symbol">DataFrame</span>({<span class="hljs-string">'Year'</span>:np.arange(<span class="hljs-number">1990</span>,<span class="hljs-number">2010</span>),<span class="hljs-string">'Australia'</span>:aust - np.mean(aust),<span class="hljs-string">'Brazil'</span>:brazt - np.mean(brazt),<span class="hljs-string">'Canada'</span>:cant- np.mean(cant),<span class="hljs-string">'China'</span>:chint - np.mean(chint),
+                            <span class="hljs-string">'India'</span>:indt - np.mean(indt),<span class="hljs-string">'Russia'</span>:rust - np.mean(rust),<span class="hljs-string">'United States'</span>:ust - np.mean(ust)}).set_index(<span class="hljs-string">'Year'</span>)
+#<span class="hljs-symbol">Plotting</span>
+fig, ax1 = plt.subplots(figsize = (<span class="hljs-number">8</span>,<span class="hljs-number">5</span>), dpi = <span class="hljs-number">100</span>)
+t = np.arange(<span class="hljs-number">1990</span>,<span class="hljs-number">2010</span>)
+color = <span class="hljs-string">'tab:red'</span>
+ax1.set_xlabel(<span class="hljs-string">'Year'</span>)
+ax1.set_ylabel(<span class="hljs-string">'Average Temperature (C)'</span>, color=color)
+ax1.plot(t, avg_temp[<span class="hljs-string">'Australia'</span>], color=color,marker=<span class="hljs-string">'o'</span>)
+ax1.tick_params(axis=<span class="hljs-string">'y'</span>, labelcolor=color)
+plt.xticks(range(<span class="hljs-number">1990</span>,<span class="hljs-number">2010</span>),rotation=<span class="hljs-number">45</span>)
+plt.ylim([<span class="hljs-number">-2</span>,<span class="hljs-number">2</span>])
+
+#<span class="hljs-symbol">Normalizing</span> ghg data with mean of row
+ghg_data_norm = ghg_user.sub(np.mean(ghg_data,axis=<span class="hljs-number">1</span>),axis=<span class="hljs-number">1</span>)
+
+ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+color = <span class="hljs-string">'tab:blue'</span>
+ax2.set_ylabel(<span class="hljs-string">'GHG per capita'</span>, color=color)  # we already handled the x-label with ax1
+ax2.plot(t, ghg_data_norm[<span class="hljs-string">'Australia'</span>], color=color, marker=<span class="hljs-string">'o'</span>)
+ax2.tick_params(axis=<span class="hljs-string">'y'</span>, labelcolor=color)
+plt.xticks(range(<span class="hljs-number">1990</span>,<span class="hljs-number">2010</span>),rotation=<span class="hljs-number">45</span>)
+plt.ylim([<span class="hljs-number">-2</span>,<span class="hljs-number">2</span>])
+plt.title(<span class="hljs-string">'Australia'</span>)
+
+plt.axvline(x=<span class="hljs-number">2000</span>,linewidth=<span class="hljs-number">1</span>,color=<span class="hljs-string">'black'</span>,linestyle=<span class="hljs-string">'dashed'</span>)
+plt.axvline(x=<span class="hljs-number">2006</span>,linewidth=<span class="hljs-number">1</span>,color=<span class="hljs-string">'black'</span>,linestyle=<span class="hljs-string">'dashed'</span>)
+plt.axvline(x=<span class="hljs-number">2008</span>,linewidth=<span class="hljs-number">1</span>,color=<span class="hljs-string">'black'</span>,linestyle=<span class="hljs-string">'dashed'</span>)
+
+fig.tight_layout()  # otherwise the right y-label is slightly clipped
+plt.show()
+</code></pre>
+<p><img src="output_61_0.png" alt="png"></p>
+<p>The above graph shows the trend of how temperature and greenhouse gas emissions have changed across the years. The dotted lines indicate climate laws that have been passed in the year 2000, 2006 and 2008. </p>
+<p>For ease of comparison between temperature and greenhouse gas emissions, the data is normalized by subtracting from the mean. </p>
+<p>The three laws that were passed in Australia in 2000, 2006, and 2008 as well as their descriptions are shown below in the <code>aus_laws</code> table.</p>
+<pre><code class="lang-python">aus = law_climate_global[law_climate_global[<span class="hljs-string">"Geography"</span>] == <span class="hljs-string">"Australia"</span>]
+aus_laws = aus[aus[<span class="hljs-string">"Document Types"</span>] == <span class="hljs-string">"Law"</span>]
+aus_laws = aus_laws[aus_laws[<span class="hljs-string">"Year"</span>].isin([<span class="hljs-number">2000</span>,<span class="hljs-number">2006</span>,<span class="hljs-number">2008</span>])]
+aus_laws.head()
+</code></pre>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Title</th>
+      <th>Type</th>
+      <th>Geography</th>
+      <th>Geography ISO</th>
+      <th>Frameworks</th>
+      <th>Responses</th>
+      <th>Instruments</th>
+      <th>Document Types</th>
+      <th>Natural Hazards</th>
+      <th>Keywords</th>
+      <th>Sectors</th>
+      <th>Events</th>
+      <th>Documents</th>
+      <th>Parent Legislation</th>
+      <th>Description</th>
+      <th>Date</th>
+      <th>Year</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>97</th>
+      <td>Offshore Petroleum and Greenhouse Gas Storage ...</td>
+      <td>legislative</td>
+      <td>Australia</td>
+      <td>AUS</td>
+      <td>NaN</td>
+      <td>Mitigation</td>
+      <td>NaN</td>
+      <td>Law</td>
+      <td>NaN</td>
+      <td>Energy Supply</td>
+      <td>Health, Water</td>
+      <td>29/03/2006|Enactment of specific provisions;01...</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>The Act aims to provide an effective regulator...</td>
+      <td>2006-03-29</td>
+      <td>2006</td>
+    </tr>
+    <tr>
+      <th>98</th>
+      <td>National Greenhouse and Energy Reporting Act 2007</td>
+      <td>legislative</td>
+      <td>Australia</td>
+      <td>AUS</td>
+      <td>NaN</td>
+      <td>Mitigation</td>
+      <td>NaN</td>
+      <td>Law</td>
+      <td>NaN</td>
+      <td>Institutions / Administrative Arrangements, En...</td>
+      <td>Energy</td>
+      <td>01/07/2008|First reporting period commenced;29...</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>The Act establishes the legislative framework ...</td>
+      <td>2008-01-07</td>
+      <td>2008</td>
+    </tr>
+    <tr>
+      <th>101</th>
+      <td>Renewable Energy (Electricity) Act 2000</td>
+      <td>legislative</td>
+      <td>Australia</td>
+      <td>AUS</td>
+      <td>NaN</td>
+      <td>Mitigation</td>
+      <td>NaN</td>
+      <td>Law</td>
+      <td>NaN</td>
+      <td>Institutions / Administrative Arrangements, En...</td>
+      <td>Agriculture, Energy, Waste, Water</td>
+      <td>21/12/2000|Law passed;01/03/2016|Last amendment</td>
+      <td>Full text|<a href="https://climate-laws.org/rails/activ">https://climate-laws.org/rails/activ</a>...</td>
+      <td>NaN</td>
+      <td>The Renewable Energy (Electricity) Act 2000 in...</td>
+      <td>2000-12-21</td>
+      <td>2000</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+<pre><code class="lang-python"><span class="hljs-selector-tag">aus_laws</span><span class="hljs-selector-attr">["Description"]</span><span class="hljs-selector-class">.iloc</span><span class="hljs-selector-attr">[2]</span>
+</code></pre>
+<pre><code><span class="hljs-comment">'The Renewable Energy (Electricity) Act 2000 in its latest version as of 10 March 2016, also called "Act for the establishment and administration of a scheme to encourage additional electricity generation from renewable energy sources, and for related purposes", aims to:<span class="hljs-doctag">&lt;br /&gt;</span>\n<span class="hljs-doctag">&lt;ul&gt;</span><span class="hljs-doctag">&lt;br /&gt;</span>\n<span class="hljs-doctag">&lt;li&gt;</span> "encourage the additional generation of electricity from renewable sources; <span class="hljs-doctag">&lt;/li&gt;</span><span class="hljs-doctag">&lt;br /&gt;</span>\n<span class="hljs-doctag">&lt;li&gt;</span> reduce emissions of greenhouse gases in the electricity sector; and<span class="hljs-doctag">&lt;/li&gt;</span><span class="hljs-doctag">&lt;br /&gt;</span>\n<span class="hljs-doctag">&lt;li&gt;</span> ensure that renewable energy sources are ecologically sustainable" (Art 3).<span class="hljs-doctag">&lt;/li&gt;</span><span class="hljs-doctag">&lt;br /&gt;</span>\n<span class="hljs-doctag">&lt;/ul&gt;</span><span class="hljs-doctag">&lt;br /&gt;</span>\nThese objectives are to be reached through issuing of certificates for the generation of electricity, with two types of renewable energy certificates:<span class="hljs-doctag">&lt;br /&gt;</span>\n<span class="hljs-doctag">&lt;br /&gt;</span>\n<span class="hljs-doctag">&lt;ul&gt;</span><span class="hljs-doctag">&lt;br /&gt;</span>\n<span class="hljs-doctag">&lt;li&gt;</span>large?scale generation certificates, created in relation to the generation of electricity by accredited power stations; and<span class="hljs-doctag">&lt;/li&gt;</span><span class="hljs-doctag">&lt;br /&gt;</span>\n<span class="hljs-doctag">&lt;li&gt;</span>small?scale technology certificates, created in relation to the installation of solar water heaters and small generation units (Art 17B).<span class="hljs-doctag">&lt;/li&gt;</span><span class="hljs-doctag">&lt;br /&gt;</span>\n<span class="hljs-doctag">&lt;/ul&gt;</span><span class="hljs-doctag">&lt;br /&gt;</span>\nThe certificates can only be issued for eligible renewable energy sources, including hydro, wave, tide, ocean, wind, solar, geothermal?aquifer, hot dry rock, energy crops, wood waste, agricultural waste, waste from processing of agricultural products, food waste, food processing waste, bagasse, black liquor, biomass?based components of municipal solid waste, landfill gas, sewage gas and biomass?based components of sewage, and any other energy source prescribed by the regulations. (Art 17).<span class="hljs-doctag">&lt;br /&gt;</span>\nCertain purchasers (called liable entities) are required to surrender a specified number of certificates for the electricity that they acquire during a year.<span class="hljs-doctag">&lt;br /&gt;</span>\nLiable entity is defined as "a person who, during a year, makes a relevant acquisition (wholesale acquisition or wholesale notional acquisition - <span class="hljs-doctag">&lt;em&gt;</span>author\'s note<span class="hljs-doctag">&lt;/em&gt;</span>) of electricity" (Art 35). Exemption applies if:<span class="hljs-doctag">&lt;br /&gt;</span>\n<span class="hljs-doctag">&lt;br /&gt;</span>\n<span class="hljs-doctag">&lt;ol&gt;</span><span class="hljs-doctag">&lt;br /&gt;</span>\n<span class="hljs-doctag">&lt;li&gt;</span> "the electricity was delivered on a grid that has a capacity that is less than 100 MW and that is not, directly or indirectly, connected to a grid that has a capacity of 100 MW or more; or<span class="hljs-doctag">&lt;/li&gt;</span><span class="hljs-doctag">&lt;br /&gt;</span>\n<span class="hljs-doctag">&lt;li&gt;</span> the end user of the electricity generated the electricity and either of the following conditions are satisfied: (i) the point at which the electricity is generated is less than 1 km from the point at which the electricity is used; (ii) the electricity is transmitted or distributed between the point of generation and the point of use and the line on which the electricity is transmitted or distributed is used solely for the transmission or distribution of electricity between those 2 points" (Art 31).<span class="hljs-doctag">&lt;/li&gt;</span><span class="hljs-doctag">&lt;br /&gt;</span>\n<span class="hljs-doctag">&lt;/ol&gt;</span><span class="hljs-doctag">&lt;br /&gt;</span>\nWhere a liable entity does not have enough certificates to surrender in a year, it will have to pay renewable energy shortfall charge. There are 2 types of renewable energy shortfall charge:<span class="hljs-doctag">&lt;br /&gt;</span>\n<span class="hljs-doctag">&lt;br /&gt;</span>\n<span class="hljs-doctag">&lt;ol&gt;</span><span class="hljs-doctag">&lt;br /&gt;</span>\n<span class="hljs-doctag">&lt;li&gt;</span>"large?scale generation shortfall charge, which is calculated by reference to a liable entity\'s relevant acquisitions of electricity, its exemptions, the number of large?scale generation certificates it surrenders and the renewable energy power percentage; and<span class="hljs-doctag">&lt;/li&gt;</span><span class="hljs-doctag">&lt;br /&gt;</span>\n<span class="hljs-doctag">&lt;li&gt;</span>small?scale technology shortfall charge, which is calculated by reference to a liable entity\'s relevant acquisitions of electricity, its exemptions, the number of small?scale technology certificates it surrenders and the small?scale technology percentage" (Art 34A).<span class="hljs-doctag">&lt;/li&gt;</span><span class="hljs-doctag">&lt;br /&gt;</span>\n<span class="hljs-doctag">&lt;/ol&gt;</span><span class="hljs-doctag">&lt;br /&gt;</span>'</span>
+</code></pre><p>As seen from the description, this law was implemented to shift Australia to renewable energy sources, such as solar, wind, biofuels. Although these should reduce greenhouse emissions, there is not a consistent decrease as can be seen in the above graph. This goes to show that there may not be a direct correlation between the two variables (policy and GHG emissions) and could make GHG emissions difficult to predict, especially with just one feature (policy).</p>
+<h1 id="regression-analysis-and-prediction">Regression Analysis and Prediction</h1>
+<pre><code class="lang-python">carbon_tax = pd.read_csv(<span class="hljs-symbol">'carbontax_policies</span>.csv')
+carbon_year_sort = carbon_tax.sort_values(<span class="hljs-symbol">'Year</span> <span class="hljs-keyword">of</span> implementation')
+carbon_year_sort.sample(<span class="hljs-number">5</span>)
+</code></pre>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Name of the initiative</th>
+      <th>Type</th>
+      <th>Status</th>
+      <th>Type of juridiction covered</th>
+      <th>Jurisdiction covered</th>
+      <th>World Bank region</th>
+      <th>Year of implementation</th>
+      <th>Year of abolishment</th>
+      <th>GHG emissions covered [MtCO2e]</th>
+      <th>Proportion of global GHG emissions covered</th>
+      <th>Government income, previous year</th>
+      <th>Value [billion US$]</th>
+      <th>Initiatives with overlapping GHG emissions covered</th>
+      <th>Covered GHG emissions overlapping with other initiatives [MtCO2e]</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>81</th>
+      <td>Taiwan ETS</td>
+      <td>ETS</td>
+      <td>Under consideration</td>
+      <td>Subnational</td>
+      <td>Taiwan</td>
+      <td>East Asia &amp; Pacific</td>
+      <td>TBC</td>
+      <td>0</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>0.000000</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>55</th>
+      <td>Norway carbon tax</td>
+      <td>Carbon tax</td>
+      <td>Implemented</td>
+      <td>National</td>
+      <td>Norway</td>
+      <td>Europe and Central Asia</td>
+      <td>1991</td>
+      <td>0</td>
+      <td>46.538717</td>
+      <td>0.000859</td>
+      <td>1.374223</td>
+      <td>1.454774</td>
+      <td>EU ETS</td>
+      <td>13.853025</td>
+    </tr>
+    <tr>
+      <th>73</th>
+      <td>Singapore carbon tax</td>
+      <td>Carbon tax</td>
+      <td>Implemented</td>
+      <td>National</td>
+      <td>Singapore</td>
+      <td>East Asia &amp; Pacific</td>
+      <td>2019</td>
+      <td>0</td>
+      <td>44.782400</td>
+      <td>0.000827</td>
+      <td>0.000000</td>
+      <td>0.134295</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>78</th>
+      <td>Switzerland ETS</td>
+      <td>ETS</td>
+      <td>Implemented</td>
+      <td>National</td>
+      <td>Switzerland</td>
+      <td>Europe and Central Asia</td>
+      <td>2008</td>
+      <td>0</td>
+      <td>6.041530</td>
+      <td>0.000112</td>
+      <td>0.008866</td>
+      <td>0.116563</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>22</th>
+      <td>Denmark carbon tax</td>
+      <td>Carbon tax</td>
+      <td>Implemented</td>
+      <td>National</td>
+      <td>Denmark</td>
+      <td>Europe and Central Asia</td>
+      <td>1992</td>
+      <td>0</td>
+      <td>25.276499</td>
+      <td>0.000467</td>
+      <td>0.519979</td>
+      <td>0.534777</td>
+      <td>EU ETS</td>
+      <td>0.000000</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+<p>Climate change policies, as shown in the data table above, have been implemented across various time frames. As discussed in our EDA, a climate policy has long term effects and cannot be directly linked to changes in indicators such as temperature or greenhouse gas emissions immediatly following implementation. </p>
+<p>Therefore, for our model we focus on countries that have been early adopters of climate policies (such as carbon tax): Finland, Poland, Norway, Sweden, Denmark. These countries (and their respective indicator values) will make up the training data used to train the model</p>
+<pre><code class="lang-python">ghg_only = ghg_emissions[ghg_emissions[<span class="hljs-string">'category'</span>]==<span class="hljs-string">'greenhouse_gas_ghgs_emissions_including_indirect_co2_without_lulucf_in_kilotonne_co2_equivalent'</span>]
+ghg_only_helper = ghg_only.<span class="hljs-keyword">drop</span>(<span class="hljs-string">'category'</span>,axis=<span class="hljs-number">1</span>)
+ghg_only_flipped = pd.pivot_table(ghg_only_helper, <span class="hljs-built_in">values</span>=<span class="hljs-string">'value'</span>,<span class="hljs-built_in">index</span>=<span class="hljs-string">'year'</span>,columns=<span class="hljs-string">'country_or_area'</span>)
+ghg_only_flipped.head(<span class="hljs-number">1</span>)
+</code></pre>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>country_or_area</th>
+      <th>Australia</th>
+      <th>Austria</th>
+      <th>Belarus</th>
+      <th>Belgium</th>
+      <th>Canada</th>
+      <th>Croatia</th>
+      <th>Cyprus</th>
+      <th>Czech Republic</th>
+      <th>Denmark</th>
+      <th>Estonia</th>
+      <th>...</th>
+      <th>Portugal</th>
+      <th>Romania</th>
+      <th>Russian Federation</th>
+      <th>Slovakia</th>
+      <th>Slovenia</th>
+      <th>Sweden</th>
+      <th>Switzerland</th>
+      <th>Turkey</th>
+      <th>Ukraine</th>
+      <th>United States of America</th>
+    </tr>
+    <tr>
+      <th>year</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>1990</th>
+      <td>418623.0496</td>
+      <td>78844.62726</td>
+      <td>133457.162</td>
+      <td>146021.2368</td>
+      <td>616908.1109</td>
+      <td>31204.63126</td>
+      <td>5624.649922</td>
+      <td>198621.2408</td>
+      <td>71470.18321</td>
+      <td>39965.16872</td>
+      <td>...</td>
+      <td>60552.01255</td>
+      <td>254999.1229</td>
+      <td>3767555.044</td>
+      <td>74271.51068</td>
+      <td>18616.4491</td>
+      <td>71917.25959</td>
+      <td>53719.9849</td>
+      <td>207773.3211</td>
+      <td>937954.2038</td>
+      <td>6397144.49</td>
+    </tr>
+  </tbody>
+</table>
+<p>1 rows × 38 columns</p>
+</div>
+
+
+
+<p>Pivot Table shows greenhouse gas emission data from ghg_emissions table for each country from 1990 to 2010.</p>
+<pre><code class="lang-python"># <span class="hljs-symbol">Creating</span> ghg table
+ghg_5 = ghg_only[ghg_only[<span class="hljs-string">'country_or_area'</span>].isin([<span class="hljs-string">'Finland'</span>, <span class="hljs-string">'Poland'</span>, <span class="hljs-string">'Norway'</span>, <span class="hljs-string">'Sweden'</span>, <span class="hljs-string">'Denmark'</span>])]
+ghg_5 = ghg_5[ghg_5[<span class="hljs-string">'year'</span>].isin(np.arange(<span class="hljs-number">1990</span>,<span class="hljs-number">2011</span>))]
+ghg_5.head(<span class="hljs-number">5</span>)
+</code></pre>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>country_or_area</th>
+      <th>year</th>
+      <th>value</th>
+      <th>category</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>1278</th>
+      <td>Denmark</td>
+      <td>2010</td>
+      <td>63499.83666</td>
+      <td>greenhouse_gas_ghgs_emissions_including_indire...</td>
+    </tr>
+    <tr>
+      <th>1279</th>
+      <td>Denmark</td>
+      <td>2009</td>
+      <td>63066.65781</td>
+      <td>greenhouse_gas_ghgs_emissions_including_indire...</td>
+    </tr>
+    <tr>
+      <th>1280</th>
+      <td>Denmark</td>
+      <td>2008</td>
+      <td>65963.76336</td>
+      <td>greenhouse_gas_ghgs_emissions_including_indire...</td>
+    </tr>
+    <tr>
+      <th>1281</th>
+      <td>Denmark</td>
+      <td>2007</td>
+      <td>69661.17965</td>
+      <td>greenhouse_gas_ghgs_emissions_including_indire...</td>
+    </tr>
+    <tr>
+      <th>1282</th>
+      <td>Denmark</td>
+      <td>2006</td>
+      <td>74321.35766</td>
+      <td>greenhouse_gas_ghgs_emissions_including_indire...</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+<p><code>ghg_5</code> has greenhouse gas emissions which is our predictor variable i.e. carbon dioxide emissions in killotonne of CO2 equivalent for our selected countries. The next step is to obtain the features (climate indicators) for the selected countries.</p>
+<pre><code class="lang-python">indicators_5 = indicators_nan[indicators_nan[<span class="hljs-string">'Country name'</span>].isin([<span class="hljs-string">'Finland'</span>, <span class="hljs-string">'Poland'</span>, <span class="hljs-string">'Norway'</span>, <span class="hljs-string">'Sweden'</span>
+                                                                   , <span class="hljs-string">'Denmark'</span>])]
+indicators_5 = indicators_5.drop([<span class="hljs-string">'Country code'</span>,<span class="hljs-string">'SCALE'</span>,<span class="hljs-string">'Decimals'</span>,<span class="hljs-string">'Series name'</span>], axis=<span class="hljs-number">1</span>)
+indicators_5.head(<span class="hljs-number">1</span>)
+</code></pre>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Country name</th>
+      <th>Series code</th>
+      <th>1990</th>
+      <th>1991</th>
+      <th>1992</th>
+      <th>1993</th>
+      <th>1994</th>
+      <th>1995</th>
+      <th>1996</th>
+      <th>1997</th>
+      <th>...</th>
+      <th>2002</th>
+      <th>2003</th>
+      <th>2004</th>
+      <th>2005</th>
+      <th>2006</th>
+      <th>2007</th>
+      <th>2008</th>
+      <th>2009</th>
+      <th>2010</th>
+      <th>2011</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>519</th>
+      <td>Denmark</td>
+      <td>AG.YLD.CREL.KG</td>
+      <td>6117.9</td>
+      <td>5911.5</td>
+      <td>4314.2</td>
+      <td>5677.6</td>
+      <td>5530.5</td>
+      <td>6291.1</td>
+      <td>6052.5</td>
+      <td>6207.2</td>
+      <td>...</td>
+      <td>5761.8</td>
+      <td>6096.6</td>
+      <td>6013.1</td>
+      <td>6153.3</td>
+      <td>5778.3</td>
+      <td>5675.7</td>
+      <td>6017.3</td>
+      <td>6775.9</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+  </tbody>
+</table>
+<p>1 rows × 24 columns</p>
+</div>
+
+
+
+<p>Features for each country are formatted into a pivot table (with year column) and then all values are are concatenated to obtain a feature matrix.</p>
+<pre><code class="lang-python">finland = indicators_5[indicators_5[<span class="hljs-string">'Country name'</span>]==<span class="hljs-string">'Finland'</span>]
+finland_pivot = pd.pivot_table(finland, columns=<span class="hljs-string">'Series code'</span>)
+finland_pivot[<span class="hljs-string">'Country'</span>] = <span class="hljs-string">'Finland'</span>
+
+poland = indicators_5[indicators_5[<span class="hljs-string">'Country name'</span>]==<span class="hljs-string">'Poland'</span>]
+poland_pivot = pd.pivot_table(finland, columns=<span class="hljs-string">'Series code'</span>)
+poland_pivot[<span class="hljs-string">'Country'</span>] = <span class="hljs-string">'Poland'</span>
+
+norway = indicators_5[indicators_5[<span class="hljs-string">'Country name'</span>]==<span class="hljs-string">'Norway'</span>]
+norway_pivot = pd.pivot_table(norway, columns=<span class="hljs-string">'Series code'</span>)
+norway_pivot[<span class="hljs-string">'Country'</span>] = <span class="hljs-string">'Norway'</span>
+
+sweden = indicators_5[indicators_5[<span class="hljs-string">'Country name'</span>]==<span class="hljs-string">'Sweden'</span>]
+sweden_pivot = pd.pivot_table(sweden, columns=<span class="hljs-string">'Series code'</span>)
+sweden_pivot[<span class="hljs-string">'Country'</span>] = <span class="hljs-string">'Sweden'</span>
+
+denmark = indicators_5[indicators_5[<span class="hljs-string">'Country name'</span>]==<span class="hljs-string">'Denmark'</span>]
+denmark_pivot = pd.pivot_table(denmark, columns=<span class="hljs-string">'Series code'</span>)
+denmark_pivot[<span class="hljs-string">'Country'</span>] = <span class="hljs-string">'Denmark'</span>
+
+countries = [finland_pivot,poland_pivot,norway_pivot,sweden_pivot,denmark_pivot]
+almost = pd.concat(countries).reset_index()
+almost[<span class="hljs-string">'index'</span>] = almost[<span class="hljs-string">'index'</span>].astype(int)
+almost.head(<span class="hljs-number">1</span>)
+</code></pre>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>index</th>
+      <th>AG.YLD.CREL.KG</th>
+      <th>BX.KLT.DINV.WD.GD.ZS</th>
+      <th>EG.USE.COMM.GD.PP.KD</th>
+      <th>EG.USE.PCAP.KG.OE</th>
+      <th>EN.CLC.GHGR.MT.CE</th>
+      <th>EN.URB.MCTY.TL.ZS</th>
+      <th>ER.LND.PTLD.ZS</th>
+      <th>NY.GDP.MKTP.CD</th>
+      <th>NY.GNP.PCAP.CD</th>
+      <th>SE.ENR.PRSC.FM.ZS</th>
+      <th>SE.PRM.CMPT.ZS</th>
+      <th>SH.DYN.MORT</th>
+      <th>SP.POP.GROW</th>
+      <th>SP.POP.TOTL</th>
+      <th>SP.URB.GROW</th>
+      <th>SP.URB.TOTL</th>
+      <th>Country</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>1990</td>
+      <td>3543.1</td>
+      <td>0.58</td>
+      <td>245.99</td>
+      <td>5692.06</td>
+      <td>-15.038182</td>
+      <td>17.47</td>
+      <td>4.25</td>
+      <td>1.388447e+11</td>
+      <td>25210.0</td>
+      <td>108.71</td>
+      <td>101.89</td>
+      <td>6.7</td>
+      <td>0.48</td>
+      <td>4986000.0</td>
+      <td>1.01</td>
+      <td>3061404.0</td>
+      <td>Finland</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+<p>The feature data are then merged with the greenhouse gas emission data based on country and year and the data is stored in <code>finale</code> dataframe</p>
+<pre><code class="lang-python">#<span class="hljs-symbol">Dropped</span> features with <span class="hljs-symbol">NaN</span> values
+final = almost.merge(ghg_5,left_on=<span class="hljs-string">'index'</span>,right_on=<span class="hljs-string">'year'</span>).drop([<span class="hljs-string">'category'</span>,<span class="hljs-string">'country_or_area'</span>,<span class="hljs-string">'index'</span>],axis=<span class="hljs-number">1</span>).dropna()
+cols = final.columns.tolist()
+cols = cols[<span class="hljs-number">-1</span>:] + cols[:-<span class="hljs-number">1</span>]
+final_2 = final[cols]
+cols_2 = final_2.columns.tolist()
+cols_2 = cols_2[<span class="hljs-number">-1</span>:] + cols_2[:-<span class="hljs-number">1</span>]
+final_3 = final_2[cols_2]
+cols_3 = final_3.columns.tolist()
+cols_3 = cols_3[<span class="hljs-number">-1</span>:] + cols_3[:-<span class="hljs-number">1</span>]
+finale = final_3[cols_3]
+
+# <span class="hljs-symbol">Hardcode</span> fix
+finale = finale[finale[<span class="hljs-string">'value'</span>]&lt;<span class="hljs-number">100000</span>]
+finale
+finale.head(<span class="hljs-number">1</span>)
+</code></pre>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Country</th>
+      <th>year</th>
+      <th>value</th>
+      <th>AG.YLD.CREL.KG</th>
+      <th>BX.KLT.DINV.WD.GD.ZS</th>
+      <th>EG.USE.COMM.GD.PP.KD</th>
+      <th>EG.USE.PCAP.KG.OE</th>
+      <th>EN.CLC.GHGR.MT.CE</th>
+      <th>EN.URB.MCTY.TL.ZS</th>
+      <th>ER.LND.PTLD.ZS</th>
+      <th>NY.GDP.MKTP.CD</th>
+      <th>NY.GNP.PCAP.CD</th>
+      <th>SE.ENR.PRSC.FM.ZS</th>
+      <th>SE.PRM.CMPT.ZS</th>
+      <th>SH.DYN.MORT</th>
+      <th>SP.POP.GROW</th>
+      <th>SP.POP.TOTL</th>
+      <th>SP.URB.GROW</th>
+      <th>SP.URB.TOTL</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>Finland</td>
+      <td>1990</td>
+      <td>71470.18321</td>
+      <td>3543.1</td>
+      <td>0.58</td>
+      <td>245.99</td>
+      <td>5692.06</td>
+      <td>-15.038182</td>
+      <td>17.47</td>
+      <td>4.25</td>
+      <td>1.388447e+11</td>
+      <td>25210.0</td>
+      <td>108.71</td>
+      <td>101.89</td>
+      <td>6.7</td>
+      <td>0.48</td>
+      <td>4986000.0</td>
+      <td>1.01</td>
+      <td>3061404.0</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+<p><strong>LASSO Regression</strong></p>
+<p>LASSO Regression is performed on the <code>finale</code> dataframe to predict countries greenhouse gas emissions.</p>
+<pre><code class="lang-python">%matplotlib <span class="hljs-keyword">inline</span>
+<span class="hljs-keyword">from</span> sklearn.model_selection <span class="hljs-keyword">import</span> train_test_split
+<span class="hljs-keyword">from</span> sklearn.linear_model <span class="hljs-keyword">import</span> Ridge, Lasso, LinearRegression
+<span class="hljs-keyword">from</span> sklearn.model_selection <span class="hljs-keyword">import</span> KFold
+<span class="hljs-keyword">from</span> sklearn.model_selection <span class="hljs-keyword">import</span> cross_val_score
+<span class="hljs-keyword">from</span> sklearn.model_selection <span class="hljs-keyword">import</span> cross_val_predict
+<span class="hljs-keyword">from</span> sklearn.metrics <span class="hljs-keyword">import</span> r2_score
+<span class="hljs-keyword">from</span> scipy <span class="hljs-keyword">import</span> stats
+</code></pre>
+<pre><code class="lang-python"><span class="hljs-meta"># Run this cell to suppress all Convergence warnings</span>
+<span class="hljs-title">from</span> sklearn.exceptions <span class="hljs-keyword">import</span> ConvergenceWarning
+<span class="hljs-keyword">import</span> warnings
+<span class="hljs-title">warnings</span>.filterwarnings(<span class="hljs-string">"ignore"</span>, category=<span class="hljs-type">ConvergenceWarning</span>)
+</code></pre>
+<pre><code class="lang-python"><span class="hljs-comment"># Assigning predictor matrix and feature matrix</span>
+<span class="hljs-attr">X</span> = finale.drop(['Country','value','AG.YLD.CREL.KG','BX.KLT.DINV.WD.GD.ZS'],<span class="hljs-attr">axis=1)</span>
+<span class="hljs-attr">y</span> = finale['value']
+
+<span class="hljs-comment">#Creating test, train and validation sets</span>
+np.random.seed(<span class="hljs-number">10</span>)
+X_train, X_test, y_train, <span class="hljs-attr">y_test</span> = train_test_split(X, y, <span class="hljs-attr">train_size=.80,</span> <span class="hljs-attr">test_size=.20)</span>
+
+X_train_v, X_validate, y_train_v, <span class="hljs-attr">y_validate</span> = train_test_split(X_train, y_train, <span class="hljs-attr">train_size=.75,</span> <span class="hljs-attr">test_size=.25)</span>
+
+<span class="hljs-comment"># Fitting LASSO model</span>
+<span class="hljs-attr">lasso</span> = Lasso(<span class="hljs-attr">max_iter=10000,alpha=.0001)</span>
+<span class="hljs-attr">lasso_fit</span> = lasso.fit(X_train,y_train)
+</code></pre>
+<pre><code class="lang-python"><span class="hljs-comment"># use the model to make predictions</span>
+lasso_pred = lasso_fit.predict(X_train_v)
+<span class="hljs-comment"># plot the predictions</span>
+fig, <span class="hljs-keyword">scatter </span>= plt.<span class="hljs-keyword">subplots(figsize </span>= (<span class="hljs-number">10</span>,<span class="hljs-number">6</span>), dpi = <span class="hljs-number">100</span>)
+plt.<span class="hljs-keyword">scatter(y_train_v,lasso_pred)
+</span>plt.xlabel(<span class="hljs-string">'Actual Values'</span>)
+plt.ylabel(<span class="hljs-string">'Predicted Values'</span>)
+plt.title(<span class="hljs-string">'LASSO Model'</span>)<span class="hljs-comment">;</span>
+</code></pre>
+<p><img src="output_84_0.png" alt="png"></p>
+<pre><code class="lang-python">fig, scatter = plt.subplots<span class="hljs-comment">(figsize = (10,6)</span>, dpi = <span class="hljs-number">100</span>)
+plt.scatter<span class="hljs-comment">(np.arange(len(y_train_v)</span>),<span class="hljs-comment">(y_train_v-lasso_pred)</span>)
+plt.title<span class="hljs-comment">('Residual Plot')</span>;
+</code></pre>
+<p><img src="output_85_0.png" alt="png"></p>
+<p>The LASSO model scatter plot does not appear to represent a useful predictive model; however, it is of significance to note that the GHG emission values that seem to be predicted the worst are those below 60,000. The predictive model performs much better on values greater than 60,000.</p>
+<p>Below we will investigate the features that were highlighted by the LASSO regression model.?</p>
+<pre><code class="lang-python">coefficient_df = pd.DataFrame(lasso.coef_,<span class="hljs-built_in">np</span>.<span class="hljs-built_in">array</span>(X.<span class="hljs-built_in">columns</span>)).<span class="hljs-built_in">rename</span>(<span class="hljs-built_in">columns</span>={<span class="hljs-number">0</span>:<span class="hljs-string">"coefficient"</span>})
+coefficient_df
+</code></pre>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>coefficient</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>year</th>
+      <td>2.836423e+03</td>
+    </tr>
+    <tr>
+      <th>EG.USE.COMM.GD.PP.KD</th>
+      <td>-2.334402e+02</td>
+    </tr>
+    <tr>
+      <th>EG.USE.PCAP.KG.OE</th>
+      <td>2.371850e+01</td>
+    </tr>
+    <tr>
+      <th>EN.CLC.GHGR.MT.CE</th>
+      <td>-2.141162e+02</td>
+    </tr>
+    <tr>
+      <th>EN.URB.MCTY.TL.ZS</th>
+      <td>-3.329773e+04</td>
+    </tr>
+    <tr>
+      <th>ER.LND.PTLD.ZS</th>
+      <td>2.839609e+02</td>
+    </tr>
+    <tr>
+      <th>NY.GDP.MKTP.CD</th>
+      <td>-1.192481e-07</td>
+    </tr>
+    <tr>
+      <th>NY.GNP.PCAP.CD</th>
+      <td>-8.167115e-01</td>
+    </tr>
+    <tr>
+      <th>SE.ENR.PRSC.FM.ZS</th>
+      <td>-1.236953e+03</td>
+    </tr>
+    <tr>
+      <th>SE.PRM.CMPT.ZS</th>
+      <td>1.792570e+03</td>
+    </tr>
+    <tr>
+      <th>SH.DYN.MORT</th>
+      <td>1.267174e+04</td>
+    </tr>
+    <tr>
+      <th>SP.POP.GROW</th>
+      <td>1.029472e+05</td>
+    </tr>
+    <tr>
+      <th>SP.POP.TOTL</th>
+      <td>5.711499e-01</td>
+    </tr>
+    <tr>
+      <th>SP.URB.GROW</th>
+      <td>-1.006567e+04</td>
+    </tr>
+    <tr>
+      <th>SP.URB.TOTL</th>
+      <td>-3.147925e-01</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+<pre><code class="lang-python">coefficient_df.plot.barh(figsize = (<span class="hljs-number">8</span>,<span class="hljs-number">6</span>));
+</code></pre>
+<p><img src="output_89_0.png" alt="png"></p>
+<p>The above plot shows how the coefficients vary with each feature. LASSO conducts feature shrinkage and therefore coefficients that have a high absolute value are weighted higher and in turn have a greater influence on the predictor variable: greenhouse gas emissions. Lets look at what the features mean by comparing to indicators_legend dataframe</p>
+<pre><code class="lang-python">coefficient_helper = coefficient_df.reset_index().<span class="hljs-built_in">rename</span>(columns={<span class="hljs-string">"index"</span>:<span class="hljs-string">"Series code"</span>})
+indicators_legend_2 = indicators_legend.reset_index().<span class="hljs-built_in">rename</span>(columns={<span class="hljs-string">'level_0'</span>:<span class="hljs-string">'Series code'</span>,<span class="hljs-string">'level_1'</span>:<span class="hljs-string">'Series name'</span>,
+                                                                     <span class="hljs-string">'level_2'</span>:<span class="hljs-string">'Scale'</span>,<span class="hljs-string">'level_3'</span>:<span class="hljs-string">'Decimals'</span>,
+                                                                     <span class="hljs-string">'level_4'</span>:<span class="hljs-string">'Order'</span>,<span class="hljs-string">'level_5'</span>:<span class="hljs-string">'Topic'</span>,
+                                                                     <span class="hljs-string">'level_6'</span>:<span class="hljs-string">'Definition'</span>}).<span class="hljs-keyword">drop</span>(<span class="hljs-number">0</span>)
+features = coefficient_helper.merge(indicators_legend_2,left_on=<span class="hljs-string">'Series code'</span>,right_on=<span class="hljs-string">"Series code"</span>)
+features = features.<span class="hljs-keyword">drop</span>([<span class="hljs-string">"coefficient"</span>,<span class="hljs-string">"Scale"</span>,<span class="hljs-string">"Decimals"</span>,<span class="hljs-string">"Order"</span>],axis=<span class="hljs-number">1</span>)
+features.head()
+</code></pre>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Series code</th>
+      <th>Series name</th>
+      <th>Topic</th>
+      <th>Definition</th>
+      <th>indicatorslegend</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>EG.USE.COMM.GD.PP.KD</td>
+      <td>Energy use per units of GDP (kg oil eq./$1,000...</td>
+      <td>GHG emissions and energy use</td>
+      <td>Energy use per units of GDP is the kilogram of...</td>
+      <td>International Energy Agency (IEA Statistics ¬©...</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>EG.USE.PCAP.KG.OE</td>
+      <td>Energy use per capita (kilograms of oil equiva...</td>
+      <td>GHG emissions and energy use</td>
+      <td>Energy use per capita refers to use of primary...</td>
+      <td>International Energy Agency (IEA Statistics ¬©...</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>EN.CLC.GHGR.MT.CE</td>
+      <td>GHG net emissions/removals by LUCF (MtCO2e)</td>
+      <td>GHG emissions and energy use</td>
+      <td>GHG net emissions/removals by LUCF refers to c...</td>
+      <td>United Nations Framework Convention on Climate...</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>EN.URB.MCTY.TL.ZS</td>
+      <td>Population in urban agglomerations &gt;1million (%)</td>
+      <td>Exposure to impacts</td>
+      <td>Population in urban agglomerations of more tha...</td>
+      <td>United Nations, World Urbanization Prospects.</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>ER.LND.PTLD.ZS</td>
+      <td>Nationally terrestrial protected areas (% of t...</td>
+      <td>Exposure to impacts</td>
+      <td>Nationally terrestrial protected areas are tot...</td>
+      <td>United Nations Environmental Program and the W...</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+<p><code>SP.POP.GROW</code> is the annual population growth rate for a particular year expressed as a percentage of the midyear population from its previous year. This feature has the largest coefficient and therefore is the most important feature in predicting greenhouse gas emissions of a country based on the LASSO model. Some other important features include:</p>
+<p><code>EN.URB.MCTY.TL.ZS</code>: the percentage of a country’s population living in metropolitan areas that in 2009 with a population of more than 1 million</p>
+<p><code>SH.DYN.MORT</code>: the Under-five mortality rate i.e. the probability per 1,000 that a newborn baby will die before reaching age five, if subject to current age-specific mortality rates. </p>
+<h1 id="analyzing-and-tuning-the-model">Analyzing and Tuning the Model</h1>
+<pre><code class="lang-python">def rmse(<span class="hljs-built_in">pred</span>, actual):
+    <span class="hljs-built_in">return</span> <span class="hljs-built_in">np</span>.<span class="hljs-built_in">sqrt</span>(<span class="hljs-built_in">np</span>.<span class="hljs-built_in">mean</span>((<span class="hljs-built_in">pred</span> - actual) ** <span class="hljs-number">2</span>))
+
+#Finding training <span class="hljs-built_in">error</span>
+<span class="hljs-built_in">print</span>(<span class="hljs-string">"RMSE: "</span>,rmse(lasso_pred, y_train_v))
+<span class="hljs-built_in">print</span>(<span class="hljs-string">"R^2 score: "</span>,r2_score(y_train_v, lasso_pred))
+</code></pre>
+<pre><code><span class="hljs-selector-tag">RMSE</span>:  8874<span class="hljs-selector-class">.92656535468</span>
+<span class="hljs-selector-tag">R</span>^2 <span class="hljs-selector-tag">score</span>:  0<span class="hljs-selector-class">.14880816789075457</span>
+</code></pre><p>Our model has very high RMSE and low $R^2$ score which showcases that the model performs poorly on the training data. This therefore requires tuning of the model. </p>
+<p><strong>Tuning Regularization Parameter</strong></p>
+<pre><code class="lang-python">from sklearn.model_selection import cross_val_score
+lasso_model1 = Lasso(normalize=True) # Initializing model
+alphas = <span class="hljs-built_in">np</span>.linspace(<span class="hljs-number">0.01</span>, <span class="hljs-number">500</span>, <span class="hljs-number">100</span>) # Alphas to test
+cv_values = [] # Initialize <span class="hljs-built_in">array</span> to store <span class="hljs-built_in">errors</span>
+train_values = []
+
+def rmse_score(model, X, y):
+    <span class="hljs-built_in">return</span> <span class="hljs-built_in">np</span>.<span class="hljs-built_in">sqrt</span>(<span class="hljs-built_in">np</span>.<span class="hljs-built_in">mean</span>((y - model.predict(X))**<span class="hljs-number">2</span>))
+
+<span class="hljs-keyword">for</span> alpha <span class="hljs-keyword">in</span> alphas: # Finding CV <span class="hljs-keyword">and</span> train <span class="hljs-built_in">errors</span> <span class="hljs-keyword">for</span> each alpha value
+    # Setting alpha parameter
+    lasso_model1.set_params(alpha=alpha)
+    # Finding average CV <span class="hljs-built_in">error</span>
+    cv_values.<span class="hljs-built_in">append</span>(<span class="hljs-built_in">np</span>.<span class="hljs-built_in">mean</span>(cross_val_score(lasso_model1, X_train, y_train,<span class="hljs-built_in">cv</span>=<span class="hljs-number">5</span>,scoring = rmse_score)))
+
+    # Fitting model
+    lasso_model1.fit(X_train_v, y_train_v)
+    #Predictng
+    lasso_preds_train = lasso_model1.predict(X_train_v)
+    # Finding training <span class="hljs-built_in">error</span>
+    train_values.<span class="hljs-built_in">append</span>(rmse(lasso_preds_train, y_train_v))
+</code></pre>
+<pre><code class="lang-python"><span class="hljs-keyword">import</span> plotly.graph_objects <span class="hljs-keyword">as</span> go
+fig = go.Figure()
+fig.add_trace(go.Scatter(x = alphas, y = train_values, mode=<span class="hljs-string">"lines+markers"</span>, name=<span class="hljs-string">"Train"</span>))
+fig.add_trace(go.Scatter(x = alphas, y = cv_values, mode=<span class="hljs-string">"lines+markers"</span>, name=<span class="hljs-string">"CV"</span>))
+fig.update_layout(xaxis_title=<span class="hljs-string">r"$\alpha$"</span>, yaxis_title=<span class="hljs-string">"RMSE"</span>, title_text=<span class="hljs-string">'Training and CV Errors for LASSO Model'</span>, title_x=<span class="hljs-number">0.5</span>)
+fig.update_layout()
+</code></pre>
+<pre><code>    <span class="hljs-tag">&lt;<span class="hljs-name">script</span> <span class="hljs-attr">type</span>=<span class="hljs-string">"text/javascript"</span>&gt;</span><span class="javascript">
+    <span class="hljs-built_in">window</span>.PlotlyConfig = {<span class="hljs-attr">MathJaxConfig</span>: <span class="hljs-string">'local'</span>};
+    <span class="hljs-keyword">if</span> (<span class="hljs-built_in">window</span>.MathJax) {MathJax.Hub.Config({<span class="hljs-attr">SVG</span>: {<span class="hljs-attr">font</span>: <span class="hljs-string">"STIX-Web"</span>}});}
+    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">typeof</span> <span class="hljs-built_in">require</span> !== <span class="hljs-string">'undefined'</span>) {
+    <span class="hljs-built_in">require</span>.undef(<span class="hljs-string">"plotly"</span>);
+    define(<span class="hljs-string">'plotly'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">require, exports, module</span>) </span>{
+        <span class="hljs-comment">/**</span></span>
+</code></pre><ul>
+<li>plotly.js v1.58.4</li>
+<li>Copyright 2012-2020, Plotly, Inc.</li>
+<li>All rights reserved.</li>
+</ul>
+<p>var gd = document.getElementById(&#39;5403b8a9-4fa0-45ef-8f96-4e8872c849bd&#39;);
+var x = new MutationObserver(function (mutations, observer) {{
+        var display = window.getComputedStyle(gd).display;
+        if (!display || display === &#39;none&#39;) {{
+            console.log([gd, &#39;removed!&#39;]);
+            Plotly.purge(gd);
+            observer.disconnect();
+        }}
+}});</p>
+<p>// Listen for the removal of the full notebook cells
+var notebookContainer = gd.closest(&#39;#notebook-container&#39;);
+if (notebookContainer) {{
+    x.observe(notebookContainer, {childList: true});
+}}</p>
+<p>// Listen for the clearing of the current output cell
+var outputEl = gd.closest(&#39;.output&#39;);
+if (outputEl) {{
+    x.observe(outputEl, {childList: true});
+}}</p>
+<pre><code>                    })                };                });            &lt;/<span class="hljs-keyword">script</span>&gt;        &lt;/<span class="hljs-keyword">div</span>&gt;
+</code></pre><p>From the above graph it can be seen that as the regularization parameter  𝛼  increases the training RMSE increases; however, the RMSE from cross validation decreases. There is a minimum of CV RMSE and this is what we will use to improve our model. Although we would see worse training error and other statistics, a larger alpha value will imrpove our overall prediction capability of the model.</p>
+<pre><code class="lang-python">min_index = <span class="hljs-keyword">list</span>(cv_values).<span class="hljs-built_in">index</span>(<span class="hljs-built_in">min</span>(cv_values))
+best_alpha = alphas[min_index]
+best_alpha
+</code></pre>
+<pre><code>35<span class="hljs-selector-class">.36282828282828</span>
+</code></pre><pre><code class="lang-python">lasso_fit2 = Lasso(normalize=True,alpha=best_alpha)
+lasso_fit2.fit(X_train_v, y_train_v)
+<span class="hljs-keyword">new</span><span class="hljs-type">_predictions</span> = lasso_fit2.predict(X_train_v)
+
+print(<span class="hljs-string">"RMSE: "</span>,rmse(<span class="hljs-keyword">new</span><span class="hljs-type">_predictions</span>, y_train_v))
+print(<span class="hljs-string">"R^2 score: "</span>,r2_score(y_train_v, <span class="hljs-keyword">new</span><span class="hljs-type">_predictions</span>))
+</code></pre>
+<pre><code><span class="hljs-selector-tag">RMSE</span>:  9033<span class="hljs-selector-class">.302293972665</span>
+<span class="hljs-selector-tag">R</span>^2 <span class="hljs-selector-tag">score</span>:  0<span class="hljs-selector-class">.11815755431209585</span>
+</code></pre><p>Now we can analyze the model on the test data see its validity</p>
+<pre><code class="lang-python">lasso_fit2.fit(X_test, y_test)
+<span class="hljs-keyword">new</span><span class="hljs-type">_predictions</span> = lasso_fit2.predict(X_test)
+
+print(<span class="hljs-string">"RMSE: "</span>,rmse(<span class="hljs-keyword">new</span><span class="hljs-type">_predictions</span>, y_test))
+print(<span class="hljs-string">"R^2 score: "</span>,r2_score(y_test, <span class="hljs-keyword">new</span><span class="hljs-type">_predictions</span>))
+</code></pre>
+<pre><code><span class="hljs-selector-tag">RMSE</span>:  9636<span class="hljs-selector-class">.772073557082</span>
+<span class="hljs-selector-tag">R</span>^2 <span class="hljs-selector-tag">score</span>:  0<span class="hljs-selector-class">.07629221223797711</span>
+</code></pre><p><strong>Standardizing the Features</strong></p>
+<p>Despite the alpha tuning, our model still performs poorly both on test and training data. Looking closer at the indicator features, a lot of features have different units. This is a problem for the model since values such as urban population will be much larger than population growth percentages and therefore the model will inevitably have higher coefficients for these values.</p>
+<p>Therefore, in order to improve model prediction and accuracy, we need to standardize all of the feature variables. This is done by using scikit learn&#39;s standard Scaler module.</p>
+<pre><code class="lang-python">from sklearn.preprocessing <span class="hljs-built_in">import</span> StandardScaler
+
+<span class="hljs-comment"># Training-Testing Split</span>
+trainingData, <span class="hljs-attr">testingData</span> = train_test_split(finale.drop(<span class="hljs-attr">columns=['Country']),</span> 
+                                             <span class="hljs-attr">train_size=0.7,</span> <span class="hljs-attr">random_state</span> = <span class="hljs-number">10</span>)
+<span class="hljs-attr">ss</span> = StandardScaler()
+<span class="hljs-attr">Stan</span> = pd.DataFrame(ss.fit_transform(testingData),<span class="hljs-attr">columns</span> = testingData.columns)
+<span class="hljs-attr">X_test_ss</span> = Stan.drop(<span class="hljs-attr">columns=['value','AG.YLD.CREL.KG','BX.KLT.DINV.WD.GD.ZS'])</span>
+<span class="hljs-attr">y_test_ss</span> = Stan['value']
+
+<span class="hljs-attr">ss</span> = StandardScaler()
+<span class="hljs-attr">Stan</span> = pd.DataFrame(ss.fit_transform(trainingData),<span class="hljs-attr">columns</span> = trainingData.columns)
+<span class="hljs-attr">X_train_ss</span> = Stan.drop(<span class="hljs-attr">columns=['value','AG.YLD.CREL.KG','BX.KLT.DINV.WD.GD.ZS'])</span>
+<span class="hljs-attr">y_train_ss</span> = Stan['value']
+</code></pre>
+<pre><code class="lang-python"><span class="hljs-comment"># Fitting LASSO model</span>
+<span class="hljs-attr">lasso</span> = Lasso(max_iter=<span class="hljs-number">10000</span>,alpha=.<span class="hljs-number">0001</span>)
+<span class="hljs-attr">lasso_fit3</span> = lasso.fit(X_train_ss,y_train_ss)
+</code></pre>
+<pre><code class="lang-python"><span class="hljs-comment"># use the model to make predictions</span>
+lasso_pred_ss = lasso_fit3.predict(X_train_ss)
+<span class="hljs-comment"># plot the predictions</span>
+fig, <span class="hljs-keyword">scatter </span>= plt.<span class="hljs-keyword">subplots(figsize </span>= (<span class="hljs-number">10</span>,<span class="hljs-number">6</span>), dpi = <span class="hljs-number">100</span>)
+plt.<span class="hljs-keyword">scatter(y_train_ss,lasso_pred_ss)
+</span>plt.xlabel(<span class="hljs-string">'Actual Values'</span>)
+plt.ylabel(<span class="hljs-string">'Predicted Values'</span>)
+plt.title(<span class="hljs-string">'LASSO'</span>)<span class="hljs-comment">;</span>
+</code></pre>
+<p><img src="output_108_0.png" alt="png"></p>
+<pre><code class="lang-python"><span class="hljs-selector-id">#Finding</span> training error
+<span class="hljs-function"><span class="hljs-title">print</span><span class="hljs-params">(<span class="hljs-string">"RMSE: "</span>,rmse(lasso_pred_ss, y_train_ss)</span></span>)
+<span class="hljs-function"><span class="hljs-title">print</span><span class="hljs-params">(<span class="hljs-string">"R^2 score: "</span>,r2_score(y_train_ss, lasso_pred_ss)</span></span>)
+</code></pre>
+<pre><code><span class="hljs-selector-tag">RMSE</span>:  0<span class="hljs-selector-class">.9566717188470474</span>
+<span class="hljs-selector-tag">R</span>^2 <span class="hljs-selector-tag">score</span>:  0<span class="hljs-selector-class">.08477922235823498</span>
+</code></pre><p>Although the RMSE has decreased, it must be noted that the RMSE is also represented in standard units and therefore is quite high in comparison to the data. A better metric is the R^2 which remains the same even after standardizing the features.</p>
+<p>Next, a similar alpha tuning is performed on the new standardized model and then run on the test data.</p>
+<pre><code class="lang-python">from sklearn.model_selection <span class="hljs-built_in">import</span> cross_val_score
+<span class="hljs-attr">lasso_model2</span> = Lasso(<span class="hljs-attr">normalize=True)</span> <span class="hljs-comment"># Initializing model</span>
+<span class="hljs-attr">alphas</span> = np.linspace(<span class="hljs-number">0.01</span>, <span class="hljs-number">0.1</span>, <span class="hljs-number">100</span>) <span class="hljs-comment"># Alphas to test</span>
+<span class="hljs-attr">cv_values</span> = [] <span class="hljs-comment"># Initialize array to store errors</span>
+<span class="hljs-attr">train_values</span> = []
+
+for alpha <span class="hljs-keyword">in</span> alphas: <span class="hljs-comment"># Finding CV and train errors for each alpha value</span>
+    <span class="hljs-comment"># Setting alpha parameter</span>
+    lasso_model2.set_params(<span class="hljs-attr">alpha=alpha)</span>
+    <span class="hljs-comment"># Finding average CV error</span>
+    cv_values.append(np.mean(cross_val_score(lasso_model2, X_train_ss, y_train_ss,<span class="hljs-attr">cv=5,scoring</span> = rmse_score)))
+
+    <span class="hljs-comment"># Fitting model</span>
+    lasso_model2.fit(X_train_ss, y_train_ss)
+    <span class="hljs-comment">#Predictng</span>
+    <span class="hljs-attr">lasso_preds_train</span> = lasso_model2.predict(X_train_ss)
+    <span class="hljs-comment"># Finding training error</span>
+    train_values.append(rmse(lasso_preds_train, y_train_ss))
+</code></pre>
+<pre><code class="lang-python">min_index = <span class="hljs-keyword">list</span>(cv_values).<span class="hljs-built_in">index</span>(<span class="hljs-built_in">min</span>(cv_values))
+best_alpha = alphas[min_index]
+best_alpha
+</code></pre>
+<pre><code>0<span class="hljs-selector-class">.023636363636363636</span>
+</code></pre><pre><code class="lang-python">#<span class="hljs-keyword">Fit</span> new <span class="hljs-keyword">alpha</span> value <span class="hljs-keyword">on</span> training data
+lasso_fit4 = Lasso(normalize=True,<span class="hljs-keyword">alpha</span>=best_alpha)
+lasso_fit4.<span class="hljs-keyword">fit</span>(X_train_ss, y_train_ss)
+new_predictions = lasso_fit4.<span class="hljs-keyword">predict</span>(X_train_ss)
+
+<span class="hljs-keyword">print</span>(<span class="hljs-string">"RMSE: "</span>,rmse(new_predictions, y_train_ss))
+<span class="hljs-keyword">print</span>(<span class="hljs-string">"R^2 score: "</span>,r2_score(y_train_ss, new_predictions))
+</code></pre>
+<pre><code><span class="hljs-selector-tag">RMSE</span>:  0<span class="hljs-selector-class">.9999999999999999</span>
+<span class="hljs-selector-tag">R</span>^2 <span class="hljs-selector-tag">score</span>:  0<span class="hljs-selector-class">.0</span>
+</code></pre><pre><code class="lang-python"><span class="hljs-selector-id">#Running</span> on test data
+lasso_fit4.fit(X_test_ss, y_test_ss)
+new_predictions = lasso_fit4.predict(X_test_ss)
+
+<span class="hljs-function"><span class="hljs-title">print</span><span class="hljs-params">(<span class="hljs-string">"RMSE: "</span>,rmse(new_predictions, y_test_ss)</span></span>)
+<span class="hljs-function"><span class="hljs-title">print</span><span class="hljs-params">(<span class="hljs-string">"R^2 score: "</span>,r2_score(y_test_ss, new_predictions)</span></span>)
+</code></pre>
+<pre><code><span class="hljs-selector-tag">RMSE</span>:  0<span class="hljs-selector-class">.9445149202418808</span>
+<span class="hljs-selector-tag">R</span>^2 <span class="hljs-selector-tag">score</span>:  0<span class="hljs-selector-class">.10789156544047351</span>
+</code></pre><p>As can be seen by the R^2 score above, tuning the model did little to improve its effectiveness.</p>
+<h1 id="run-model-on-usa-data">Run model on USA data</h1>
+<p><strong>Data cleaning and selection of US data</strong></p>
+<p>Next we will test our model on a new data set: the US.</p>
+<p>The data has been cleaned and compiled similarly to the data used for the regresion model.</p>
+<pre><code class="lang-python"># <span class="hljs-symbol">Test</span> model on <span class="hljs-symbol">USA</span>
+ghg_us = ghg_only[ghg_only[<span class="hljs-string">'country_or_area'</span>]==<span class="hljs-string">'United States of America'</span>]
+ghg_us = ghg_us[ghg_us[<span class="hljs-string">'year'</span>].isin(np.arange(<span class="hljs-number">1990</span>,<span class="hljs-number">2011</span>))]
+indicators_us = indicators_nan[indicators_nan[<span class="hljs-string">'Country name'</span>]==<span class="hljs-string">'United States'</span>]
+indicators_us = indicators_us.drop([<span class="hljs-string">'Country code'</span>,<span class="hljs-string">'SCALE'</span>,<span class="hljs-string">'Decimals'</span>,<span class="hljs-string">'Series name'</span>], axis=<span class="hljs-number">1</span>)
+indicators_us.head()
+</code></pre>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Country name</th>
+      <th>Series code</th>
+      <th>1990</th>
+      <th>1991</th>
+      <th>1992</th>
+      <th>1993</th>
+      <th>1994</th>
+      <th>1995</th>
+      <th>1996</th>
+      <th>1997</th>
+      <th>...</th>
+      <th>2002</th>
+      <th>2003</th>
+      <th>2004</th>
+      <th>2005</th>
+      <th>2006</th>
+      <th>2007</th>
+      <th>2008</th>
+      <th>2009</th>
+      <th>2010</th>
+      <th>2011</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>684</th>
+      <td>United States</td>
+      <td>AG.YLD.CREL.KG</td>
+      <td>4755.100000</td>
+      <td>4510.200000</td>
+      <td>5360.500000</td>
+      <td>4301.100000</td>
+      <td>5563.300000</td>
+      <td>4644.700000</td>
+      <td>5177.400000</td>
+      <td>5277.600000</td>
+      <td>...</td>
+      <td>5547.400000</td>
+      <td>6024.000000</td>
+      <td>6851.600000</td>
+      <td>6451.000000</td>
+      <td>6400.100000</td>
+      <td>6704.300000</td>
+      <td>6619.900000</td>
+      <td>7238.400000</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>917</th>
+      <td>United States</td>
+      <td>BX.KLT.DINV.WD.GD.ZS</td>
+      <td>0.840000</td>
+      <td>0.390000</td>
+      <td>0.320000</td>
+      <td>0.780000</td>
+      <td>0.660000</td>
+      <td>0.790000</td>
+      <td>1.120000</td>
+      <td>1.280000</td>
+      <td>...</td>
+      <td>0.800000</td>
+      <td>0.570000</td>
+      <td>1.240000</td>
+      <td>0.900000</td>
+      <td>1.820000</td>
+      <td>1.580000</td>
+      <td>2.170000</td>
+      <td>1.130000</td>
+      <td>1.62</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>1383</th>
+      <td>United States</td>
+      <td>EG.USE.COMM.GD.PP.KD</td>
+      <td>240.290000</td>
+      <td>242.890000</td>
+      <td>239.600000</td>
+      <td>237.000000</td>
+      <td>231.860000</td>
+      <td>228.990000</td>
+      <td>225.540000</td>
+      <td>217.990000</td>
+      <td>...</td>
+      <td>196.240000</td>
+      <td>191.890000</td>
+      <td>189.070000</td>
+      <td>184.330000</td>
+      <td>177.820000</td>
+      <td>177.490000</td>
+      <td>172.970000</td>
+      <td>168.810000</td>
+      <td>169.59</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>1616</th>
+      <td>United States</td>
+      <td>EG.USE.PCAP.KG.OE</td>
+      <td>7671.550000</td>
+      <td>7631.520000</td>
+      <td>7677.390000</td>
+      <td>7709.840000</td>
+      <td>7757.140000</td>
+      <td>7763.370000</td>
+      <td>7844.010000</td>
+      <td>7828.540000</td>
+      <td>...</td>
+      <td>7838.520000</td>
+      <td>7788.320000</td>
+      <td>7875.280000</td>
+      <td>7840.530000</td>
+      <td>7691.690000</td>
+      <td>7749.230000</td>
+      <td>7481.020000</td>
+      <td>7045.170000</td>
+      <td>7231.80</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>3713</th>
+      <td>United States</td>
+      <td>EN.CLC.GHGR.MT.CE</td>
+      <td>-846.554878</td>
+      <td>-818.679731</td>
+      <td>-804.464713</td>
+      <td>-758.572584</td>
+      <td>-850.050344</td>
+      <td>-795.375724</td>
+      <td>-679.822703</td>
+      <td>-727.705738</td>
+      <td>...</td>
+      <td>-830.615927</td>
+      <td>-980.170627</td>
+      <td>-1033.640402</td>
+      <td>-1027.881749</td>
+      <td>-1014.528899</td>
+      <td>-1013.383977</td>
+      <td>-1007.251509</td>
+      <td>-990.061776</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+  </tbody>
+</table>
+<p>5 rows × 24 columns</p>
+</div>
+
+
+
+
+<pre><code class="lang-python">us_pivot = pd.pivot_table(indicators_us, <span class="hljs-built_in">columns</span>='Series <span class="hljs-built_in">code</span>').reset_index().rename(<span class="hljs-built_in">columns</span>={'<span class="hljs-built_in">index</span>'<span class="hljs-symbol">:</span>'<span class="hljs-built_in">year</span>'})
+us_pivot.head()
+</code></pre>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Series code</th>
+      <th>year</th>
+      <th>AG.YLD.CREL.KG</th>
+      <th>BX.KLT.DINV.WD.GD.ZS</th>
+      <th>EG.USE.COMM.GD.PP.KD</th>
+      <th>EG.USE.PCAP.KG.OE</th>
+      <th>EN.CLC.GHGR.MT.CE</th>
+      <th>EN.URB.MCTY.TL.ZS</th>
+      <th>ER.LND.PTLD.ZS</th>
+      <th>NY.GDP.MKTP.CD</th>
+      <th>NY.GNP.PCAP.CD</th>
+      <th>SH.DYN.MORT</th>
+      <th>SP.POP.GROW</th>
+      <th>SP.POP.TOTL</th>
+      <th>SP.URB.GROW</th>
+      <th>SP.URB.TOTL</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>1990</td>
+      <td>4755.1</td>
+      <td>0.84</td>
+      <td>240.29</td>
+      <td>7671.55</td>
+      <td>-846.554878</td>
+      <td>41.56</td>
+      <td>14.78</td>
+      <td>5.750800e+12</td>
+      <td>23260.0</td>
+      <td>11.3</td>
+      <td>1.13</td>
+      <td>249623000.0</td>
+      <td>1.34</td>
+      <td>187966119.0</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1991</td>
+      <td>4510.2</td>
+      <td>0.39</td>
+      <td>242.89</td>
+      <td>7631.52</td>
+      <td>-818.679731</td>
+      <td>41.65</td>
+      <td>14.78</td>
+      <td>5.930700e+12</td>
+      <td>23460.0</td>
+      <td>10.9</td>
+      <td>1.34</td>
+      <td>252981000.0</td>
+      <td>1.87</td>
+      <td>191506617.0</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>1992</td>
+      <td>5360.5</td>
+      <td>0.32</td>
+      <td>239.60</td>
+      <td>7677.39</td>
+      <td>-804.464713</td>
+      <td>41.72</td>
+      <td>14.79</td>
+      <td>6.261800e+12</td>
+      <td>24810.0</td>
+      <td>10.5</td>
+      <td>1.39</td>
+      <td>256514000.0</td>
+      <td>1.91</td>
+      <td>195207154.0</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>1993</td>
+      <td>4301.1</td>
+      <td>0.78</td>
+      <td>237.00</td>
+      <td>7709.84</td>
+      <td>-758.572584</td>
+      <td>41.83</td>
+      <td>14.79</td>
+      <td>6.582900e+12</td>
+      <td>25550.0</td>
+      <td>10.1</td>
+      <td>1.32</td>
+      <td>259919000.0</td>
+      <td>1.84</td>
+      <td>198838035.0</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>1994</td>
+      <td>5563.3</td>
+      <td>0.66</td>
+      <td>231.86</td>
+      <td>7757.14</td>
+      <td>-850.050344</td>
+      <td>41.98</td>
+      <td>14.80</td>
+      <td>6.993300e+12</td>
+      <td>26820.0</td>
+      <td>9.8</td>
+      <td>1.23</td>
+      <td>263126000.0</td>
+      <td>1.75</td>
+      <td>202343894.0</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+<pre><code class="lang-python">us_pivot[<span class="hljs-string">'year'</span>] = us_pivot[<span class="hljs-string">'year'</span>].astype(int)
+final_us = us_pivot.merge(ghg_us,left_on=<span class="hljs-string">'year'</span>,right_on=<span class="hljs-string">'year'</span>).drop([<span class="hljs-string">'category'</span>,<span class="hljs-string">'country_or_area'</span>],axis=<span class="hljs-number">1</span>).dropna()
+cols_us1 = final_us.columns.tolist()
+cols_us1 = cols_us1[<span class="hljs-number">-1</span>:] + cols_us1[:-<span class="hljs-number">1</span>]
+final_us2 = final_us[cols_us1]
+
+final_us2.head()
+</code></pre>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>value</th>
+      <th>year</th>
+      <th>AG.YLD.CREL.KG</th>
+      <th>BX.KLT.DINV.WD.GD.ZS</th>
+      <th>EG.USE.COMM.GD.PP.KD</th>
+      <th>EG.USE.PCAP.KG.OE</th>
+      <th>EN.CLC.GHGR.MT.CE</th>
+      <th>EN.URB.MCTY.TL.ZS</th>
+      <th>ER.LND.PTLD.ZS</th>
+      <th>NY.GDP.MKTP.CD</th>
+      <th>NY.GNP.PCAP.CD</th>
+      <th>SH.DYN.MORT</th>
+      <th>SP.POP.GROW</th>
+      <th>SP.POP.TOTL</th>
+      <th>SP.URB.GROW</th>
+      <th>SP.URB.TOTL</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>6397144.490</td>
+      <td>1990</td>
+      <td>4755.1</td>
+      <td>0.84</td>
+      <td>240.29</td>
+      <td>7671.55</td>
+      <td>-846.554878</td>
+      <td>41.56</td>
+      <td>14.78</td>
+      <td>5.750800e+12</td>
+      <td>23260.0</td>
+      <td>11.3</td>
+      <td>1.13</td>
+      <td>249623000.0</td>
+      <td>1.34</td>
+      <td>187966119.0</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>6330937.886</td>
+      <td>1991</td>
+      <td>4510.2</td>
+      <td>0.39</td>
+      <td>242.89</td>
+      <td>7631.52</td>
+      <td>-818.679731</td>
+      <td>41.65</td>
+      <td>14.78</td>
+      <td>5.930700e+12</td>
+      <td>23460.0</td>
+      <td>10.9</td>
+      <td>1.34</td>
+      <td>252981000.0</td>
+      <td>1.87</td>
+      <td>191506617.0</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>6448677.154</td>
+      <td>1992</td>
+      <td>5360.5</td>
+      <td>0.32</td>
+      <td>239.60</td>
+      <td>7677.39</td>
+      <td>-804.464713</td>
+      <td>41.72</td>
+      <td>14.79</td>
+      <td>6.261800e+12</td>
+      <td>24810.0</td>
+      <td>10.5</td>
+      <td>1.39</td>
+      <td>256514000.0</td>
+      <td>1.91</td>
+      <td>195207154.0</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>6566415.856</td>
+      <td>1993</td>
+      <td>4301.1</td>
+      <td>0.78</td>
+      <td>237.00</td>
+      <td>7709.84</td>
+      <td>-758.572584</td>
+      <td>41.83</td>
+      <td>14.79</td>
+      <td>6.582900e+12</td>
+      <td>25550.0</td>
+      <td>10.1</td>
+      <td>1.32</td>
+      <td>259919000.0</td>
+      <td>1.84</td>
+      <td>198838035.0</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>6650296.595</td>
+      <td>1994</td>
+      <td>5563.3</td>
+      <td>0.66</td>
+      <td>231.86</td>
+      <td>7757.14</td>
+      <td>-850.050344</td>
+      <td>41.98</td>
+      <td>14.80</td>
+      <td>6.993300e+12</td>
+      <td>26820.0</td>
+      <td>9.8</td>
+      <td>1.23</td>
+      <td>263126000.0</td>
+      <td>1.75</td>
+      <td>202343894.0</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+<p><strong>Run LASSO Regression</strong></p>
+<pre><code class="lang-python"><span class="hljs-attr">X_us</span> = final_us2.drop([<span class="hljs-string">'value'</span>],axis=<span class="hljs-number">1</span>)
+<span class="hljs-attr">y_us</span> = final_us2[<span class="hljs-string">'value'</span>]
+
+<span class="hljs-comment">#Standard Scalar values</span>
+<span class="hljs-attr">X_us_ss</span>=pd.DataFrame(ss.fit_transform(X_us))
+<span class="hljs-attr">y_us_ss</span> = (y_us - np.mean(y_us))/np.std(y_us)
+</code></pre>
+<pre><code class="lang-python"><span class="hljs-comment"># use the model to make predictions</span>
+lasso_pred_us = lasso_fit4.predict(X_us_ss)
+<span class="hljs-comment"># plot the predictions</span>
+fig, <span class="hljs-keyword">scatter </span>= plt.<span class="hljs-keyword">subplots(figsize </span>= (<span class="hljs-number">10</span>,<span class="hljs-number">6</span>), dpi = <span class="hljs-number">100</span>)
+plt.<span class="hljs-keyword">scatter(y_us_ss,lasso_pred_us)
+</span>plt.xlabel(<span class="hljs-string">'Actual Values'</span>)
+plt.ylabel(<span class="hljs-string">'Predicted Values'</span>)
+plt.title(<span class="hljs-string">'USA LASSO'</span>)<span class="hljs-comment">;</span>
+</code></pre>
+<p><img src="output_125_0.png" alt="png"></p>
+<pre><code class="lang-python">fig, scatter = plt.subplots<span class="hljs-comment">(figsize = (10,6)</span>, dpi = <span class="hljs-number">100</span>)
+plt.scatter<span class="hljs-comment">(np.arange(len(y_us)</span>),<span class="hljs-comment">(y_us_ss-lasso_pred_us)</span>)
+plt.title<span class="hljs-comment">('Residual Plot')</span>;
+</code></pre>
+<p><img src="output_126_0.png" alt="png"></p>
+<pre><code class="lang-python"><span class="hljs-selector-id">#Finding</span> error
+<span class="hljs-function"><span class="hljs-title">print</span><span class="hljs-params">(<span class="hljs-string">"RMSE: "</span>,rmse(lasso_pred_us, y_us)</span></span>)
+<span class="hljs-function"><span class="hljs-title">print</span><span class="hljs-params">(<span class="hljs-string">"R^2 score: "</span>,r2_score(y_us, lasso_pred_us)</span></span>)
+</code></pre>
+<pre><code><span class="hljs-selector-tag">RMSE</span>:  6985258<span class="hljs-selector-class">.991728892</span>
+<span class="hljs-selector-tag">R</span>^2 <span class="hljs-selector-tag">score</span>:  <span class="hljs-selector-tag">-419</span><span class="hljs-selector-class">.5577504712653</span>
+</code></pre><p>From the above two graphs it is apparent that a LASSO model does not do well in predicting the greenhouse gas emissions of a country. The residual plot shows a pattern which suggests that there are some inherent relationships that are not captured by our model.</p>
+<p>This goes to show that using regression to predict the effects of climate policy on greenhouse gas emissions is ineffective and tricky since the covariates and outcome variable do not have a direct relationship as we explored previously. </p>
+<pre><code class="lang-python">
+</code></pre>

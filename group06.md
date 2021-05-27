@@ -4,169 +4,358 @@ title: Group 06
 nav_order: 11
 description:
 ---
+# Building a Model to Predict One's Stance on Requiring Vaccinations in School Using Opinions on COVID-19 Policies
 
-# Influence of media on juveniles’ violent behavior
-*by Adelaide Chen, Courtney Yeh, Yinbei Xu, Zehra Ali*
+**By: Nikhil Patel, Ryan Little, Susan Pang**
 
-### Overview
+For our project, we sought to construct a classifier that would determine one’s stance on requiring vaccinations in school based on their opinions concerning various topics related to the ongoing COVID-19 pandemic. Our underlying assumption was that there is an inherent relationship between one’s views on various COVID-19 policies and mandatory vaccinations. 
 
-According to market research in 2019, the average video gamer spends seven hours and seven minutes each week playing video games, such as, Call of Duty: Modern Warfare, Apex Legends, Red Dead Redemption II, and Super Smash Bros: Ultimate. Although these games have very different storylines and playing styles, they all do share the common factor of violence. For instance, Call of Duty follows soldiers through various war scenarios abroad, in which the gamers are required to kill the “terrorists” in order to succeed in the game; however, this often results in realistic civilian casualties on screen. Due to the graphic and gruesome nature of these types of violent games, many politicians, such as President Donald Trump, and concerned parents claim that violent behaviors of juveniles are the result of violent video games. Thus, the question we wish to address is, whether media (violent video games, violent films, news, uncensored social media) influence juveniles to become more inclined to commit violent crimes. In order to analyze these factors we must assess the various short-term and long-term priming effects these video games have on these individuals.
+In order to build this classifier, we pulled data from the American National Election Studies 2020 time series. This extensive, academically-run national survey is conducted both before and after every presidential election. The data is publicly accessible for download. The study asks the same questions over time, but features specific questions related to the COVID-19 pandemic in 2020. There are questions related to respondents’ views on requiring vaccines in schools, the health benefits of vaccines, and the scientific evidence that vaccines cause autism. For 2020 specifically, there are questions related to the respondents’ views on the strictness of pandemic shutdowns, the speed of reopenings, the importance of science in driving policy decisions, and the efficacy of hydroxychloroquine in treating the virus. Based on responses to these questions and others, we aimed to build a classifier that would accurately predict whether a respondent is for or against requiring vaccinations in schools. We employed a suite of computational techniques to build this classifier, ranging from logistic regression to decision trees.
 
-To understand the relationship between factors that can form violent behavior and acts of violence among juveniles, we use linear regression methods as well as decision trees and random forests to understand the level of correlation between these factors, as well as whether increases in factors that can form violent behavior can be predictors of increases in violence among youth. We use public datasets containing information about juvenile arrest rates, grossing data for movies (to be broken down by genre to isolate the effect of violent films), video game sales, and and mass or school shootings (as proxies for the number of news articles related to violence).
+## Exploratory Data Analysis
 
-## Data
+**Data Source**
 
-### Game Sales Data
+The ANES 2020 Time Series Study can be found at: [2020 Time Series Study](https://electionstudies.org/data-center/2020-time-series-study/)
 
-This dataset represents the sales of video games over the years that may contribute to an increase in the rate of violence in youths. The data was collected from a website that compiles video game sales data annually for different countries. This information is publicly available.
+**Ethical Concerns of Data Collection:**
 
-According to research, 21% of computer game sales were attributed to juveniles (Statista). If we assumed that the possible range of customers for video games would be in the age range of 10 to 78 (life expectancy in the US), we would expect approximately 12% of sales to be associated with video/computer games. The actual volume of sales attributed to juveniles is significantly higher than the expected value.
+As we are using data provided by the ANES without making any alterations besides renaming columns for clarity, there should be no real concern of violating ethical data collection principles, assuming the ANES hasn't somehow violated these principles when they were collecting it firsthand. However, this like isn't the case, as the data has been anonymized and we have followed the ANES rules on their website of not trying to discover the identities of any respondents, either intentionally or inadvertently.
 
-Additionally, it could be hypothesized that video games have the potential to normalize violence, neutralizing the psychological effects of committing acts of violence. Due to these reasons, video games could have the potential to increase rates of violent crime among juveniles.
+**The Data**
 
-Given the combination of these reasons, video game sales could be a strong predictor of violent behavior in juveniles.
+![ANES Dataframe](ANES_df_pic.jpg)
 
-Source: https://www.vgchartz.com/yearly/
+**Description of data and variables chosen:**
 
+We selected all variables related to vaccinations and COVID-19 and renamed the columns
 
+![ANES Renamed Dataframe](ANES_vars.jpg)
 
+* The first variable is a question asked to respondents on whether or not they think vaccines should be required in schools. The options are favor, oppose, or neither (denoted by different integers as responses), and there are a few other options that essentially correspond to "no answer" for various reasons. The next variable is a summary of the first, simply with more options of how strongly the respondent felt about their response, with different options such as strongly oppose, strongly in favor, etc. It is basically to gauge how strongly one feels about their answer to the previous question.
 
-![game sales chart](game_sales_chart.png)
+* The autism evidence feature is a question asked to respondents on whether or not they believe scientific evidence shows that vaccines are linked to autism. They could either answer yes or no, with other datapoints essentially corresponding to "no answer". 
 
-In this dataset, the top selling 100 videogames for each year between 2005 and 2018 are given. Thanks to the website that collected this data, we have information about how these games are categorized. Based on the standardized categorizations of these games, we can limit the dataset to represent only those of interest (Action, Shooter, Fighting), as shown above.
+* The vaccine in schools strength variable is measuring the magnitude of response to the original question of requiring vaccines in schools. It basically removes what they actually answered and simply gauges how strongly they felt about their answer in general, whether they answered yes or no. We use it because it measures how strongly a respondent feels about the topic.
 
-One issue of using Action, Shooter and Fighting categories is that games in these categories may not always be exhibiting violence. For instance, one of the games categorized to be an "Action" game is Spongebob SquarePants: The Yellow Avenger. However, as there are 600 games in this dataframe, it is not possible to manually go through and eliminate each game that might be a slight outlier like this. This may be taken as a drawback for the models that will use this data to generate predictions.
+* The household covid case variable asks if the respondent has had anyone in their household test positive for COVID-19. The options are yes/no or other possibilities corresponding to no answer. We hope to use this to see correlations between positive tests and other reponses.
 
-![game sales graphs](game_sales_plots.png)
+* The vaccine health benefits feature asks if the respondent thinks the benefits of vaccines outweigh the risks, with the answer options being yes, no, or no difference. The vaccine health benefits summary is more in-depth, gauging how strongly they feel in whatever direction they answered, such as strongly agree, strongly oppose, etc.
 
-The top graph show that violent video game sales peaked in 2013, gradually falling until 2018. The bottom graph shows that non-violent games do not follow the same trend, though, so it can be concluded that the incease of violence-related video games are not simply due to the overall growth of the video game industry.
+* The putoff vaccines b/c of cost variable is a question that asks if the respondent knows anyone (including themself) that has put off a regular checkup or vaccine because of the cost. The options for answering are yes/no, with other entries in the data essentially corresponding to "no answer."
 
-![game sales data](game_sales_data.png)
+* The covid limits feature is a question that asks if the respondent thinks the limits their state placed on public activity because of COVID is too strict. The options range from far too strict to not nearly strict enough, with different intensities in between, including "about right".
 
-Above shows the final data that is used in the scope of making predictions of juvenile violent crime rates.
+* The reopening speed variable asks if the respondent thinks their state's reopening speed of relaxing stay-at-home orders is too fast, too slow, or about the right speed. 
 
-### Movie Grossing Data
+* The science importance question asks the respondent how important they think science should be for making government decisions about COVID-19. The options range from not at all important to extremely important, with different checkpoints in between. 
 
-Similar to video games' effects on individuals, violent movies may downplay the repercussions of violent acts, and may even make such acts look heroic or attractive. Therefore, the revenues generated by movies related to action, horror or crime may be correlated with the number of juvenile arrests.  
+* The COVID developed variable asks if the respondent thinks that COVID-19 was developed in a lab intentionally, with the answers being yes or no.
 
-![movie sales chart](movies_chart.jpg)
+* The hydroxychloroquine effectiveness question asks if the respondent thinks that there is enough scientific evidence to show that hydroxychloroquine is an effective treatment for COVID-19, with the possible answers being yes or no.
 
-![movie sales graph](movies_figure.jpg)
+**Visualizing Relationships**
 
-This graph compares the relative popularity of different genres of movies. Most notable is the year 2013, where nearly all violent films see an increase while nonviolent movies experience a dip. Overall, however, there were more movies produced in 2013 compared to previous years.
+Our model would seek to predict the 'vacc in schools' variable. In order to see if our model would be feasible, we made barplots visualizing the difference in opinion for pro-vaccination and anti-vaccination respondents for each feature. Clearly, features with larger differences in opinion between pro-vaccination and anti-vaccination respondents would be stronger predictor variables. Two of these visualizations are shown below.
 
-### Mass Shootings Data
+![COVID Strictness Barplot](Covid_strictness.jpg)
 
-Although mass shootings may not have as direct a connection to juveniles' actions and psychological states (unless they are directly affected by the shooting), the coverage of mass shootings in mass media and social media may again affect youths in a way that might give rise to acts of violence.
+These plots display that pro-vaccination respondents generally think the COVID limits were about right or not strict enough, while anti-vaccination respondents heavily lean toward saying they were too strict. The difference between the two groups is significant, so it will likely be a statistically significant predictor variable in our model.
 
+![COVID Positive Barplot](Covid_positive.jpg)
 
-![mass shootings chart](mass_chart.png)
+The distributions for whether someone in their household tested positive for COVID-19 are essentially the same for pro-vaccination and anti-vaccination respondents. As a result, it will likely be a less significant predictor variable in our model.
 
-![mass shootings juvenile vs adult histogram](mass_graph.png)
+**Data Limitations**
 
-After cleaning up the dataframe into the desired timeframe and categorizing the data, we can use the chart and histogram in the analysis of our question. These visuals show that juveniles make up roughly five percent of the mass shooting incidents in the United States from 2005 to 2018. This is significant because it shows that violent media did not affect minors enough to generate a disproportionate rise of mass shooting deliquents.
+Considering the data-generating process, it is worth noting that there have been studies showing that people of certain parties or affiliations are hesitant to provide their true opinions as well as how strongly they feel about them, which is gauged in several of the features we use. This is something we need to keep in mind. This is always a risk with using surveys as we cannot ascertain the truthfulness of all the responses.
 
-### Juvenile Arrest Rates
+There is also possibility for non-response bias, as there are certain demographics and backgrounds that are more likely to be willing to participate in a survey of this length and depth, which could affect some of the distributions that we look into on public opinions - there needs to be caution taken in how we generalize the repsondents of this survey to the overall population.
 
-Although the juvenile arrest rates are not equivalent to the number of juvenile *convictions* relating to acts of violence, it would still be a good proxy for the number of cases that involve juveniles who commit violent acts.
+## Modeling
 
-![juvenile arrests chart](jv_chart.png)
+**Cleaning the Data: One Hot Encoding**
 
+The first major step before creating the model was to prepare the data by one-hot encoding the categorical variables. This is because even though the features are on a numerical scale of response, we don't necessarily want to treat them as linear magnitudes. For example, we wouldn't say a response of 2.0 is twice as much as 1.0 - it'd be better to simply treat them as their own categories.
 
-![juvenile arrest graph](jv_arrests.png)
+![One Hot Encoded Data](onehotencode1.jpg)
 
-The dataframe originally contained all the juvenile arrests in the United States. After cleaning the dataframe into cases from 2005-2018, it seems to show an exponetial decay in the number of incidents as the years go on. There seemed to be a small peek in 2006 at roughly six-thousand incidents, then dropping all the way to two-thousand cases in 2018. A sociological reasoning behind this drop may be the new emergence of video games and the internet allows those individuals to indulge in an activity at home rather than resulting to crime. Although there is not evidence to support this claim, the graph does show that violent media does not have a significant impact on violent juvenile crimes.
+**Class Imbalance**
 
-## Models
+In the dataset, there are significantly more people who favor vaccinations in schools than those who are opposed to it. This represents a significant class imbalance favoring pro-vaccination, which can be seen below. This may reflect current vaccination sentiments in the country, with most of the population in support, and a small, strong minority in opposition. This may also be a result of non-response bias in the data-generating process. It could be possible that people against vaccination are simply less likely to respond to the ANES survey. As collecting more data is not an option, we choose to focus on ROC curves, precision, and recall in our model selection in order to combat the potential issues arising from the class imbalance. Focusing solely on accuracy would be inadequate, as class imbalances often lead to models with uniformly high accuracy (this is because a dummy classifier that predicts that everyone will be pro-vaccine will be very accurate).
 
-In this section of the project, we used different models to predict the rate of juvenile arrests for violent crimes from our 3 features related to violence in the media:  
-> (1) game sales that relate to violence (categories "fighting, shooter, action)  
-(2) movie sales related to Action, Horror or Crime  
-(3) mass shootings (actions of those older than 18).   
+![Class Imbalance](classimbalance.jpg)
 
-Given that the data related to each of these factors was collected on an ad-hoc basis rather than being part of an overarching, collective dataset, the models we chose had less of an emphasis on feature selection.
+**Splitting the Data**
 
-Additionally, because the question at hand is related to predicting a rate rather than classification or clustering, models like neural nets and logistic regressions are not appropriate. Furthermore, the years in which data was available for all features is limited to 2006 to 2016, restricting the number of times the dataset could be split. In light of these two factors, a validation set was not used during the model selection process.
+Next, the data was split into training, validation, and testing sets. We allocated 60% of the data to the training set, 20% to the validation set, and 20% to the testing set.
 
-Beyond ordinary least-squares regressions, LASSO and Ridge regressions, Principle Component Regressions and Decision Tree/Random Forest models were also taken into consideration to find the most suitable model.
+**Two Different Models**
 
+In our efforts, we created two types of models - one only using COVID-related questions, such as reopening speed and importance of science in decision-making for COVID. We also created a model using the variables related to autism, health benefits, and health risks of vaccinations, as well as COVID-related question. We expected this model to perform well at classifying one's stance on vaccinations, but we hoped that the initial COVID-specific model would identify more nuanced and complex relationships between a respondent's stance on certain issues related to vaccines and COVID.
 
+### Model 1: Using COVID-Related Features Only
 
-Shown below are data used in the regressions. 'juvenile arrest rates' refers to juvenile arrest rates relating violent crime in a given year.
+**Different Classifiers Employed:**
 
-![final data](regression_matrix.png)
+For each model, we employed a suite of classifiers, including logistic regression, random forest classification, decision tree classification, vanilla bagging classification, and gradient boosting classification. The results for each are summarized below.
 
-### Linear Regression
-#### Ordinary least-squares, LASSO and Ridge regression
+**Model 1: Logistic Regression**
 
-First, we set violent game and movie sales, and the number of mass shooting cases as Independent variable in regression model, and juvenile arrest rates for violent crimes as response variable (to be referred to as "juvenile arrest rates" to be short). Upon fitting OLS, LASSO and Ridge models and comparing errors of the models, we can find that there are little differences among three regression methods, but among which, Ridge regression fits best to our data.
+![Logistic Results 1](log1summ.jpg)
 
-So we can just focus on output of OLS regression, From the result of which, $R^{2}$ performs well in this model, which is close to 0.85, meaning three predictors we choose in the model can well-explained variation in juvenile arrest rate, but in the mean time those features have no significant influence on juvenile arrest rate. As a result of which we should improve the model by scaling predictors.
+![Logistic ROC 1](logistic_roc1.jpg)
 
-![OLS Regression Output](reg1.png)
+The logistic regression model predicts that there is an overwhelming majority of people who favor vaccinations at school (3673 people), as opposed to a small minority who do not support it (74).
 
-#### OLS with scaled data
-Ascribing the undesirable result of OLS regression to large scale differences among features, we consider fitting ordinary least-squares with scaled data.
+As seen from the accuracy score, the logistic regression model is fairly accurate. Therefore, we can assume the predictions of the model to be relatively reliable.
 
-Scaled violent game and movie sales do have a significant influence (both p values are smaller than 0.05) on juvenile arrest rates from regression result. This time, $R^{2}$ reduces a little to 0.785. We are trying to find a more reasonable way in both increase significances of features and goodness of fit of model.
+Based on the confusion matrix, there are a large number of false postives (391), meaning the model frequently predicts people support vaccines when they actually oppose them. There are not many false negatives (28), but there are also very few people who oppose vaccines in the dataset.
 
-![Scaled OLS Output](reg2.png)
+The AUC for this model is 0.548, which is only slightly better than the AUC for guessing 1 (supports vaccines) every time (AUC would equal 0.5). The closer the ROC curve comes to the 45 degree diagonal, indicating no predictive power, the worse its performance.
 
-#### OLS with logarithmic data
-Because variables like violent game and movie sales are of big scales, Logarithm may help to increase the sinificance of them in the regression model.
+Furthermore, the model has high precision and recall for the pro-vaccination class, which is to be expected due to the class imbalance. However, it has very low recall for the anti-vaccination class (0.11). This means that it predicts very few instances of anti-vaccination, but most of its predictions are correct when compared to the training data. 
 
-Comparing this model with the initial ols model, $R^{2}$ increases to over 0.95, which is very close to 1. At the same time, though three features in this model have no significant influence on juvenile arrest rates on significant level 0.05, the p values are very close to 0.1, which means both significances of independent variables and coefficient of determination ($R^{2}$) of this model are better than what we have tried above.
+**Model 1: Random Forest Classifier**
 
-![OLS with logarithmic data output](reg3.png)
+![Random Forest Results 1](rf1summ.jpg)
 
-### Principle components Regression
-Though this model has only three predictors, we can consider dimension reduction procedure because there is some relationship between violent game and movie sales.
+![Random Forest ROC 1](rf_roc1.jpg)
 
-Using two principle components we get from Principle component Analysis (PCA) to do regression, we can see the first principle (largely contributed by violent game and movie sales) has definitely significant influence on juvenile arrest rate. But principles components as predictors in this model is less interpreable than other regression approaches, and $R^{2}$ doesn't performs better.
+Similar to the logistic regresssion model, the RFC model also predicts that there will be a majority of people who favor vaccinations at school (3637 people), as opposed to a small minority who do not support it (110).
 
-![PCA Regression Output](reg4.png)
+As seen from the accuracy score, the RFC model appears to be fairly accurate, even more so than the logistic regression model. Therefore, we can assume the predictions of the model to be reliable, as it also has similar predictions to the logistic regression model.
 
-#### summary on linear regression
-Comparing models mentioned above, Ordinary Least Squares on logarithmic data fits best to this dataset, which means with this model we can well predict juvenile arrest rate with violent game and movie sales and number of mass shooting cases.
+Based on the confusion matrix, there are a large number of false postives (347), however there are less than in the logistic model. There are very few false negatives (20).
 
-### Decision Tree Model
+The AUC for this model is 0.600, which is still relatively low, but the best of all the models.
 
-Decision trees can be thought of as asking a set of questions about the data at hand in order to reach accurate prediction values. They work for both numerical predictions and classifications. In the scope of the task at hand, the decision tree will ask questions such as "Are game sales larger than a certain value?" to help partition data into different branches, which will then be used to answer other threshold questions. We repeat this process to ultimately reach predictions for each datapoint.
+Furthermore, the model has high precision and recall for the pro-vaccination class, which is to be expected due to the class imbalance. However, it has relatively low recall for the anti-vaccination class (0.21). As stated above, this means that it predicts very few instances of anti-vaccination, but most of its predictions are correct when compared to the training data. Overall, it has the highest precision and recall numbers out of the models.
 
-Upon training a decision tree model, we see that it achieves an $R^{2}$ of 1, but with test data it performs worse than linear regression models, with an $R^{2}$ of 0.78 and higher error.
+**Model 1: Decision Tree Classifier**
 
-### Random Forest Model
+![Decision Tree Results 1](dt1summ.jpg)
 
+![Decision Tree ROC 1](dt_roc1.jpg)
 
-Although the decision tree was able to perfectly predict the arrest rates in the training set, it did not perform as well on the test set. Therefore, it would make sense to try out a random forest model. Random forest models crete multiple decision tree models, trained on samples drawn from the data with replacement (similar to bootstrapping). Then, by averaging the results of the decision tree models, the random forest model is able to produce better predictions.
+Unlike the previous two models, the DTC model only predicts there to be people who will support vaccinations in school. This seems unlikely, considering that it is not very realistic for everyone to have the same stance on vaccinations since it is such a controversial topic. Therefore, despite the model's high accuracy score, we cannot take the model's predictions to be reliable.
 
-The random forest model performed worse than the decision tree model in the training set with an $R^{2}$ of 0.95, and performs much worse with the test set. Therefore, a random forest model is not the best fit to create predictions for this data.
+Based on the confusion matrix, there are a very large number of false postives (437), meaning the model frequently predicts people support vaccines when they actually oppose them. There are 0 true negatives, which indicates the model performs poorly at predicting people who oppose vaccines in schools.
 
-## Conclusion
+The AUC for this model is 0.500, which is the same as the AUC for guessing 1 (supports vaccines) every time (AUC would equal 0.5). This is very bad and indicates the model has no real predictive power.
 
-Our task was to study how violence in media (such as movies, video games, and reports of mass shootings) might affect the number of violent crimes involving juveniles. In order to do this, we used movie revenues and video game sales as proxies for popularity, and directly used the number of mass shootings.
+Furthermore, the model has high precision and recall for the pro-vaccination class. However, it has a precision and recall of 0 for the anti-vaccination class, due to predicting 0 instances of anti-vaccination. 
 
-We then evaluated the accuracy and effectiveness of several different models: OLS, ridge regression, LASSO, principle component regression, decision trees, and random forest.
+**Model 1: Vanilla Bagging**
 
+![Vanilla Bagging Results 1](vb1summ.jpg)
 
+![Vanilla Bagging ROC 1](vb_roc1.jpg)
 
-*   **OLS, ridge regression, LASSO**: limited effectiveness, all with p-values above the significance threshold of 0.05. But a OLS model with logged predictors, which effictively reduce the scale of them, performs better than the initial dataset, and the goodness of fit of this model proves it to be a good model.
-*   **Principle Component Regression**: use less predictors (only two principle components) in the model compared with ols, but it doesn't improve the model significantly because of lower $R^{2}$ and lack of interpretation. So dimensional reduction in a four-variable model is not necessary.
-*   **Decision Trees and Random Forest**: The decision tree model performed worse than OLS regression, both in $R^{2}$ and error. Furthermore, the random forest model also performed worse than OLS regression.
+Similar to the logistic regresssion and RFC model, the vanilla bagging model also predicts that there will be a majority of people who favor vaccinations at school (3687 people), as opposed to a small minority who do not support it (60).
 
+As seen from the accuracy score, the vanilla bagging model appears to be fairly accurate. Therefore, we can assume the predictions of the model to be reliable, as it also has similar predictions to the logistic regression and RFC models.
 
+Based on the confusion matrix, there are a large number of false postives (394), meaning the model frequently predicts people support vaccines when they actually oppose them. There are very few false negatives (17), but there are also very few people who oppose vaccines in the dataset.
 
-Looking at the results of our models, it is possible to conclude that we have generated a model that could predict violent crime rate among juveniles from three stats: violent video game sales, violent movie sales, and the number of mass shootings per year. Given that the log-OLS model had an $R^{2}$ of 0.96, this model may be able to make predictions with high accuracy in the future.
+The AUC for this model is 0.547, which is only slightly better than the AUC for guessing 1 (supports vaccines) every time (AUC would equal 0.5).
 
-Having a model that is able to predict violence among youths may lead to better resource allocations for the years to come (i.e. increase counseling services availability for juveniles, or to put effort towards reducing illegal gun sales to those underaged).
+Furthermore, the model has high precision and recall for the pro-vaccination class. However, it has very low recall for the anti-vaccination class (0.10). This means that it predicts very few instances of anti-vaccination, but most of its predictions are correct when compared to the training data.
 
-This model has much room for improvement. The model draws upon only three features - these could be expanded to include different factors again related to media, such as increases in violent TV show viewership, or to factors even unrelated to media to create a more holistic approach to predicting violent crime rates among juveniles. Additionally, to further enhance the predictive accuracy of these models, more datapoints could be included (stretching the training data farther into the past) and see if accuracy increases; at the same time going farther into the past my decrease relevance to the current-day context and hence make the model also less relevant.
+**Model 1: Gradient Boosting Classifier**
 
-Ethically, these models will not have a very direct impact on individuals' lives, as the predictions will not lead to certain groups being incracerated or policed at higher rates. This is mainly due to the anonymity of the data types chosen as explanatory variables - movie goers or those who watch news are not proportionally from one ethnic group or economic status.
+![Gradient Boosting Results 1](gbc1summ.jpg)
 
-Beyond being used to generate predictions, these models (mostly the regression models) can also give insight into potential causal links as well, if there is a hypothesis that violence observed in media has pyschological effects that increases violence in juveniles. For these models to be used for inference, however, they will have to be controlled for many variables and adjusted. This simply shows the versatility of regression models.
+![Gradient Boosting ROC 1](gbc_roc1.jpg)
 
+Similar to the logistic regresssion and RFC model, the boosting model also predicts that there will be a majority of people who favor vaccinations at school (3737 people). However, only 10 people are predicted to be in opposition to vaccines, which is much less than was predicted for previous models. Despite the model's relatively high accuracy score, we cannot take the model's results to be reliable due to the outlier results.
 
-```python
+Based on the confusion matrix, there are a very large number of false postives (430), meaning the model frequently predicts people support vaccines when they actually oppose them. There are extremely few false negatives (3), but also very little true negatives, as noted above.
 
-```
+The AUC for this model is 0.508, which is barely better than the AUC for guessing 1 (supports vaccines) every time (AUC would equal 0.5)
+
+The model has high precision and recall for the pro-vaccination class. However, it has extremely low recall for the anti-vaccination class (0.02). It predicts very few instances of anti-vaccination, but most of its predictions are correct when compared to the training data.
+
+**Model 1: Validation**
+
+In summary, the logistic classifier performed the best on the validation set. It had the highest accuracy and maintained a high precision and recall for the pro-vaccination class. While the precision for the anti-vaccination class was relatively high, the recall remained low. Like above, this means that it predicts very few instances of anti-vaccination, but most of its predictions are correct when compared to the training data. This is a result of the large class imbalance in the data. All other models had lower validation accuracy, with similar numbers for precision and recall, indicating that they would not generalize well to unseen data. The results are shown below:
+
+![Logistic Validation Results 1](logval1summ.jpg)
+
+**Out of all the above choices for Model 1, the Random Forest Classifier performed the best on the training data. It had the highest accuracy, area under the ROC curve, and precision and recall, indicating that it balanced true positives and false positives well and had strong predictive power. However, it did not perform well on the validation set, indicating that it likely would not generalize well to the test set due to overfitting. As a result, we moved forward using the Logistic Regression model on the test data. It performed the next best on the training data and had the best validation performance, indicating that it would likely generalize better to the test data.**
+
+**Examining Feature Importance**
+
+Random forest models allow easy access to the predictive importance of each of the features. With these predictive importances, we can see which features contribute the most to one's stance on requiring vaccinations. The feature importances are visualized below:
+
+![Feature Importance 1](featureimportance1.jpg)
+
+The top 5 most important features appear to be:
+* science importance_5.0: Opinion that science should be extremely important for decisions about COVID-19
+* covid limits_1.0: Opinion that limits place on public activity due to COVID-19 are far too strict
+* science importance_1.0: Opinion that science should be not at all important for decisions about COVID-19
+* covid developed_2.0: Opinion that COVID-19 was not developed intentionally in a lab
+* reopening speed_2.0: Opinion that COVID-19 reopenings are happening too slowly
+
+It appears that features relating to disapproval or mistrust concerning COVID-19 are relatively more important in this model.
+
+### Model 2: Using Both Vaccination and COVID-Related Features
+
+**Different Classifiers Employed:**
+
+For each model, we employed a suite of classifiers, including logistic regression, random forest classification, decision tree classification, vanilla bagging classification, and gradient boosting classification. The results for each are summarized below.
+
+**Model 2: Logistic Regression**
+
+![Logistic Results 2](log2summ.jpg)
+
+![Logistic ROC 2](log_roc2.jpg)
+
+The second logistic regression model predicts that there will be a majority of people who favor vaccinations at school (3481 people), as opposed to a minority who do not support it (266). As opposed to our previous models where we only took into account COVID-related opinions, now we are also considering general opinions on vaccinations too. As a result, the number of people predicted to support vaccinations at school went down, while the number predicted to not support vaccinations at school went up.
+
+As seen from the accuracy score, this second logistic regression model is even more accurate than when we modelled based on COVID-related opinions only. Therefore, we can assume the predictions of the model to be reliable.
+
+Based on the confusion matrix, there are a large number of false postives (232), meaning the model still frequently predicts people support vaccines when they actually oppose them. This makes sense considering the small number of vaccine opposers in the dataset. There are not many false negatives (61).
+
+The AUC for this model is 0.725, which is much better than the AUC for guessing 1 (supports vaccines) every time (AUC would equal 0.5). The closer the ROC curve comes to the 45 degree diagonal, indicating no predictive power, the worse its performance.
+
+The model has high precision and recall for the pro-vaccination class. It maintains relatively high precision for the anti-vaccination class, but suffers from low recall. This indicates that it predicts relatively few instances of anti-vaccination, but most of its predictions are correct when compared to the training data.
+
+**Model 2: Random Forest Classifier**
+
+![Random Forest Results 2](rfsumm2.jpg)
+
+![Random Forest ROC 2](rf_roc2.jpg)
+
+The RFC model predicts that there will be a majority of people who favor vaccinations at school (3401 people), as opposed to a minority who do not support it (346). As opposed to our previous models where we only took into account COVID-related opinions, now we are also considering general opinions on vaccinations too. As a result, the number of people who support vaccinations at school went down, while the number who do not support vaccinations at school went up.
+
+As seen from the accuracy score, this RFC model has the highest accuracy of all models.
+
+Looking at the confusion matrix, there are a relatively small number of false postives (119) compared to all other models.
+
+The AUC for this model is 0.860, which is much better than the AUC for guessing 1 (supports vaccines) every time (AUC would equal 0.5). This is the highest AUC of all models, indicating it has strong predictive power.
+
+The model has relatively high precision and recall for both the pro-vaccination and anti-vaccination classes. 
+
+**Model 2: Decision Tree Classifier**
+
+![Decision Tree Results 2](dtcsumm2.jpg)
+
+![Decision Tree ROC 2](dtc_roc2.jpg)
+
+Unlike the second logistic regression or RFC models, the second DTC model only predicts there to be people who will support vaccinations in school (3747 people). This seems unlikely, considering that it is not very realistic for everyone to have the same stance on vaccinations since it is such a controversial topic. Despite the model's somewhat high accuracy score, we cannot take the model's predictions to be reliable.
+
+Based on the confusion matrix, there are a very large number of false postives (437), meaning the model frequently predicts people support vaccines when they actually oppose them. There are 0 true negatives, which indicates the model performs poorly at predicting people who oppose vaccines in schools.
+
+The AUC for this model is 0.500, which is the same as the AUC for guessing 1 (supports vaccines) every time (AUC would equal 0.5). This is very bad and indicates the model has no predictive power.
+
+Furthermore, the model has high precision and recall for the pro-vaccination class. However, it has a precision and recall of 0 for the anti-vaccination class, due to predicting 0 instances of anti-vaccination.
+
+**Model 2: Vanilla Bagging**
+
+![Vanilla Bagging Results 2](vbsumm2.jpg)
+
+![Vanilla Bagging ROC 2](vb_roc2.jpg)
+
+Similar to the logistic regresssion and RFC model, the second vanilla bagging model also predicts that there will be a majority of people who favor vaccinations at school (3463 people), as opposed to a minority who do not support it (284).
+
+As seen from the accuracy score, this second vanilla bagging model is even more accurate than when we modelled based on COVID-related opinions only. It has relatively high accuracy (0.932), but it does not perform as well as the Random Forest Classifier.
+
+Looking at the confusion matrix, there are a relatively large number of false postives (203), meaning the model frequently predicts people support vaccines when they actually oppose them. This makes sense considering the small number of vaccine opposers in the dataset. There are not many false negatives (50).
+
+The AUC for this model is 0.760, which is much better than the AUC for guessing 1 (supports vaccines) every time (AUC would equal 0.5). This indicates that the model has strong predictive power.
+
+The model has high precision and recall for the pro-vaccination class. It maintains relatively high precision for the anti-vaccination class, but suffers from low recall. This indicates that it predicts relatively few instances of anti-vaccination, but most of its predictions are correct when compared to the training data.
+
+**Model 2: Gradient Boosting Classifier**
+
+![Gradient Boosting Results 2](gbcsumm2.jpg)
+
+![Gradient Boosting ROC 2](gbc_roc2.jpg)
+
+Similar to the logistic regresssion, RFC and vanilla bagging models, the boosting model also predicts that there will be a majority of people who favor vaccinations at school (3551 people), as opposed to a minority who do not support it (196). This is different from the first boosting model done above, which had an outlier result for the people who did not support vaccinations at school. The results for this second boosting model are much more similar to the second logistic regression and vanilla bagging model. It has a high accuracy score (0.916), so we can assume the result to be reliable.
+
+Looking at the confusion matrix, there are a relatively large number of false postives (278), meaning the model frequently predicts people support vaccines when they actually oppose them. Again, this makes sense considering the small number of vaccine opposers in the dataset. There are not many false negatives (37).
+
+The AUC for this model is 0.676, which is somewhat better than the AUC for guessing 1 (supports vaccines) every time (AUC would equal 0.5). This indicates that the model has relatively strong predictive power, but it does not perform that well compared to other models.
+
+Additionally, this model has high precision and recall for the pro-vaccination class. It has relatively high precision for the anti-vaccination class, but suffers from low recall. As above, this indicates that it predicts relatively few instances of anti-vaccination, but most of its predictions are correct when compared to the training data.
+
+**Model 2: Validation**
+
+In summary, the logistic classifier performed the best on the validation set. It had the highest accuracy and maintained a high precision and recall for the pro-vaccination class. While the precision for the anti-vaccination class was relatively high, the recall remained low. Like above, this means that it predicts very few instances of anti-vaccination, but most of its predictions are correct when compared to the training data. This is a result of the large class imbalance in the data. All other models had lower validation accuracy, with similar numbers for precision and recall, indicating that they would not generalize well to unseen data. Its results are shown below:
+
+![Logistic Validation Results 2](logval2summ.jpg)
+
+**Once again, out of all the above choices for Model 2, the Random Forest Classifier performed the best on the training data by far. It had the highest accuracy and area under the ROC curve, indicating the it balances true positives and false positives well and has strong predictive power. However, it did not perform well on the validation set, indicating that it likely would not generalize well to the test set due to overfitting. As a result, we moved forward using the Logistic Regression model on the test data. It performed the next best on the training data and had the highest validation accuracy, indicating that it would likely generalize better to the test data.**
+
+**Examining Feature Importance**
+
+Random forest models allow easy access to the predictive importance of each of the features. With these predictive importances, we can see which features contribute the most to one's stance on requiring vaccinations. The feature importances are visualized below:
+
+![Feature Importance 2](featureimportance2.jpg)
+
+The top 5 most important features appear to be:
+* vaccine health benefits_1.0: Opinion that health benefits of vaccines outweight risks
+* autism evidence_1.0: Opinion that most scientific evidence shows childhood vaccines cause autism
+* vaccine health benefits_2.0: Opinion that health risks of vaccines outweight benefits
+* austism evidence_2.0: Opinion that most scientific evidence shows childhood vaccines do not cause autism
+* science importance_5.0: Opinion that science should be extremely important for decisions about COVID-19
+
+It appears that vaccine-specific features are more important in this model than COVID-specific features.
+
+## Testing
+
+**As determined above, logistic regression was found to perform the best overall considering both the training and validation sets for both model types. As a result, it will be used in testing.**
+
+### Model 1: Using COVID-Related Features Only
+
+![Model 1 Test Results](model1testsumm.jpg)
+
+![Model 1 ROC](model1testroc.jpg)
+
+**Model 1: Results**
+
+The logistic regression model performed well on the test data. As seen from the accuracy score of 0.879, the model had relatively strong predictive power on the test set.
+
+Based on the confusion matrix, there are a relatively large number of false postives (146). The model frequently predicts that people support vaccines when they actually oppose them. This makes sense considering the small number of vaccine opposers in the dataset as a whole. Furthermore, there are extremely few false negatives (5).
+
+The AUC for this model is 0.541, which is not much better than the AUC for guessing 1 (supports vaccines) every time (AUC would equal 0.5). As explained, the closer the ROC curve comes to the 45 degree diagonal, indicating no predictive power, the worse its performance. As the ROC curve lies close the this 45 degree line, we can conclude that its predictive power is not much better than randomly guessing.
+
+Additionally, the model has high precision and recall for the pro-vaccination class, which is to be expected due to the class imbalance. It has relatively high precision for the anti-vaccination class, but suffers from very low recall (0.09). This means that it predicts very few instances of anti-vaccination, but most of its predictions are correct when compared to the training data.
+
+While we were far from perfection, this model shows that you can predict one's stance on requiring vaccinations in schools somewhat well based solely on their views regarding COVID-19 policies and topics. However, the model clearly struggles with predicting anti-vaccination opinions, largely due to the class imbalance presence in the ANES data.
+
+### Model 2: Using Both Vaccination and COVID-Related Features
+
+![Model 2 Test Results](model2testsumm.jpg)
+
+![Model 2 ROC](model2testroc.jpg)
+
+**Model 2: Results**
+
+Ultimately, the logistic regression model performed well on the test data. As seen from the accuracy score of 0.917, the model had strong predictive power on the test set. As expected, the second logistic regression model is even more accurate than when we modeled based on COVID-related opinions only. The addition of general vaccination opinions to the COVID model resulted in even stronger performance.
+
+Based on the confusion matrix, there are a relative few false postives (84). While not many, the model still frequently predicts people support vaccines when they actually oppose them. This makes sense considering the small number of vaccine opposers in the dataset as a whole. Furthermore, there are very few false negatives (20).
+
+The AUC for this model is 0.728, which is much better than the AUC for guessing 1 (supports vaccines) every time (AUC would equal 0.5). As explained before, the closer the ROC curve comes to the 45 degree diagonal, indicating no predictive power, the worse its performance.
+
+Furthermore, the model has high precision and recall for the pro-vaccination class, which is to be expected due to the class imbalance. It has relatively high precision for the anti-vaccination class, but suffers from mediocre recall (0.47). It predicts relatively few instances of anti-vaccination, but most of its predictions are correct when compared to the training data.
+
+While not perfect, our modeling has shown that you can effectively predict one's stance on requiring vaccinations in schools based on their views regarding COVID-19 policies and other vaccine-related topics. However, due to class imbalances in the data, the model struggles with predicting anti-vaccination stances.
+
+## Conclusions
+
+The aim of our project was to determine if our classifiers could predict whether an individual supports mandatory vaccinations in schools based on their opinions about COVID-19 and vaccinations in general. The question posed by this data analysis project is important because it relates to an ongoing political debate in the United States and throughout the world. Claims based on bad science have resulted in a strong anti-vaccination movement throughout the country, which may be bolstered by the COVID-19 pandemic.
+
+In terms of modeling results, we can see that despite the baseline model of always predicting someone to be pro-vaccination having very high accuracy (due to the large proportion of pro-vaccination respondents in the data), our models were able to improve upon this metric as well as others, including precision and recall. Overall, our second model, which included both vaccination and COVID-related features, performed better than the first. This was to be expected. It performed significantly better on the test set, implying that adding these features did not simply lead to overfitting. Rather, it improved the quality of the model on unseen data. Furthermore, the AUC of the second model was well above that of the first model and the baseline model, implying that there is a decent amount of predictive power in our model. While far from perfect, our modeling has shown that you can effectively predict one's stance on requiring vaccinations in schools based on their views regarding COVID-19 policies and other vaccine-related topics.  
+
+Class imbalance was a serious issue with this dataset. A significant amount of the ANES respondents were pro-vaccination, with only a small portion being strictly anti-vaccination. This may reflect current vaccination sentiments in the country, with most of the population in support, and a small, strong minority in opposition. This may also be a result of non-response bias in the data-generating process. It could be possible that people against vaccination are simply less likely to respond to the ANES survey. As collecting more data is not an option, we chose to focus on ROC curves, precision, and recall in our model selection in order to combat the potential issues arising from the class imbalance. Focusing solely on accuracy would be inadequate, as class imbalances often lead to models with uniformly high accuracy (this is because a dummy classifier that predicts that everyone will be pro-vaccine will be very accurate). However, even after using precision, recall, and ROC curve metrics, our models still largely struggled with predicting anti-vaccination stances.
+
+Our research has multiple implications. One potential implication is that the COVID-19 pandemic has exacerbated anti-vaccination sentiments in the United States. As shown by the models, COVID-related opinions are correlated with stances on vaccinations. It is possible that controversy surrounding COVID-19 vaccinations will spread to other vaccines. As a result, we may see tensions rise as policies are introduced to require vaccinations in schools in the future. On the other hand, a successful COVID vaccination rollout could potentially allay a large amount of anti-vaccination sentiment in the United States and lead to more accepted standards for vaccination.
+
+Analyzing the feature importance for the second model showed that vaccine-specific features were generally more important than COVID-specific features. The first model showed that some predictive power was possible using COVID-related features only, but a large amount of that success was due to the class imbalance in the data. Moving forward, the important features show that it is especially salient to tackle public opinions concerning the health risks of vaccines and their correlation with autism in order to reduce anti-vaccination sentiment. This could help guide education campaigns and lobbyists working on mandatory vaccination policies.
+
+**Future Steps**
+
+There is a clear majority of pro-vaccination respondents in the ANES data. A future step in improving the model could be the use of SMOTE - Synthetic Minority Oversampling Technique. This technique generates synthetic data to help train classification models on imbalanced data. More simply, random undersampling of the positive class (pro-vaccination) could help to solve the issue of the data imbalance. In the future, more data could also be collected to solve the class imbalance present in the data.

@@ -4,746 +4,383 @@ title: Group 01
 nav_order: 6
 description:
 ---
-# Question: Can we build a model to predict someone's stance on gun control?
-
-By: Jacqueline Wood, Andrew Choi, Omar Gastelum
-
-
-This question is important because the issue of gun control is so polarizing. If we can identify and understand where these strong differences in opinions come from we can start to understand how to combat this problem and reach more consensus.
-
-Data:
-The dataset we will use to answer this question comes from the General Social Survey, which attempts to provide policymakers with an unbiased view on what Americans think about various social issues, including gun control. The surveys are run every other year and we will be using the surveys from 2000 on, so 2000, 2002, 2004, ... 2018.
-
-This dataset includes features such as sex, race, religion, highest level of education, and income which may be helpful for predicting someone's stance on gun control.
-
-The dataset contains categorical responses to the survey questions coded as numbers, so for example the sex feature is coded as: Male: 1, Female: 2.
-
-The response variable (titled gunlaw) are response to the survey question: Would you favor or oppose a law which would require a person to obtain a police permit before he or she could buy a gun?
-
-* Favor: 1
-* Oppose: 2
-
-## Import Data and Clean Data
-
-We have separate datasets for the surveys from 2000, 2002, 2004, ... 2018 which we will combine to create our dataset.
-
-To clean the data we will combine all ten of the separate dataframes by restricting each to only contain the columns that all ten dataframes share.
-
-We also will drop rows in which the gunlaw response is nan, as well as dropping any columns that are all nans.
-
-The cleaned dataset looks like this:
-
-
-```python
-gss.head()
-```
-
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>abany</th>
-      <th>abdefect</th>
-      <th>abhlth</th>
-      <th>abnomore</th>
-      <th>abpoor</th>
-      <th>abrape</th>
-      <th>absingle</th>
-      <th>acqntsex</th>
-      <th>adults</th>
-      <th>affrmact</th>
-      <th>...</th>
-      <th>wrkstat</th>
-      <th>wrkwayup</th>
-      <th>wtss</th>
-      <th>wtssall</th>
-      <th>wtssnr</th>
-      <th>xmarsex</th>
-      <th>xmovie</th>
-      <th>xnorcsiz</th>
-      <th>year</th>
-      <th>zodiac</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>2.0</td>
-      <td>1.0</td>
-      <td>1.0</td>
-      <td>2.0</td>
-      <td>2.0</td>
-      <td>1.0</td>
-      <td>2.0</td>
-      <td>NaN</td>
-      <td>2.0</td>
-      <td>4.0</td>
-      <td>...</td>
-      <td>1.0</td>
-      <td>1.0</td>
-      <td>1.0</td>
-      <td>1.0985</td>
-      <td>1.0</td>
-      <td>1.0</td>
-      <td>NaN</td>
-      <td>3</td>
-      <td>2000</td>
-      <td>8.0</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>2.0</td>
-      <td>1.0</td>
-      <td>2.0</td>
-      <td>2.0</td>
-      <td>2.0</td>
-      <td>2.0</td>
-      <td>2.0</td>
-      <td>NaN</td>
-      <td>1.0</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>1.0</td>
-      <td>NaN</td>
-      <td>1.0</td>
-      <td>0.5493</td>
-      <td>1.0</td>
-      <td>1.0</td>
-      <td>2.0</td>
-      <td>3</td>
-      <td>2000</td>
-      <td>6.0</td>
-    </tr>
-    <tr>
-      <th>5</th>
-      <td>1.0</td>
-      <td>1.0</td>
-      <td>1.0</td>
-      <td>1.0</td>
-      <td>1.0</td>
-      <td>1.0</td>
-      <td>1.0</td>
-      <td>NaN</td>
-      <td>2.0</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>1.0</td>
-      <td>NaN</td>
-      <td>1.0</td>
-      <td>1.0985</td>
-      <td>1.0</td>
-      <td>1.0</td>
-      <td>1.0</td>
-      <td>3</td>
-      <td>2000</td>
-      <td>4.0</td>
-    </tr>
-    <tr>
-      <th>6</th>
-      <td>2.0</td>
-      <td>1.0</td>
-      <td>1.0</td>
-      <td>2.0</td>
-      <td>2.0</td>
-      <td>1.0</td>
-      <td>2.0</td>
-      <td>1.0</td>
-      <td>1.0</td>
-      <td>3.0</td>
-      <td>...</td>
-      <td>1.0</td>
-      <td>3.0</td>
-      <td>1.0</td>
-      <td>0.5493</td>
-      <td>1.0</td>
-      <td>2.0</td>
-      <td>NaN</td>
-      <td>3</td>
-      <td>2000</td>
-      <td>10.0</td>
-    </tr>
-    <tr>
-      <th>7</th>
-      <td>2.0</td>
-      <td>1.0</td>
-      <td>1.0</td>
-      <td>2.0</td>
-      <td>2.0</td>
-      <td>1.0</td>
-      <td>2.0</td>
-      <td>1.0</td>
-      <td>1.0</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>1.0</td>
-      <td>NaN</td>
-      <td>1.0</td>
-      <td>0.5493</td>
-      <td>1.0</td>
-      <td>1.0</td>
-      <td>2.0</td>
-      <td>3</td>
-      <td>2000</td>
-      <td>12.0</td>
-    </tr>
-  </tbody>
-</table>
-<p>5 rows × 404 columns</p>
-</div>
-
-    The shape of the cleaned dataset is (14545, 404)
-
-So we have 404 features, all of the responses to the many survey questions, and about 14545 survey responses total.
-
-## Exploratory Data Analysis
-
-To get a better sense of our data let's look at some EDA visualizations.
-
-First, let's look at the opinions of gun control (gunlaw) over the years.
-
-![png](images/output_17_0.png)
-
-As shown above, the majority of people responded that they would favor a law which would require a person to obtain a police permit before he or she could buy a gun.
-
-However, over the years the number of people that answer favor oscillates, but the number of people that answer oppose seems to be slightly increasing.
-
-Let's compare the relative sizes of those that favor gunlaw and oppose gunlaw.
-
-![png](images/output_19_0.png)
-
-As shown above a large majority of those surveyed favor a law that would require people to obtain a police permit before buying a gun. Having such imbalanced classes will make it critical to not just rely on the accuracy score to assess the model. This is because if you have a very imbalanced dataset and you just classify everything as the larger class you may have a relatively high accuracy, but that does not mean the model will generalize well.
-
-Now let's look at the relationship between gunlaw and owngun (if you own a gun or not). I hypothesize that if you own a gun you are more likely to oppose gun control.
-
-![png](images/output_21_0.png)
-
-
-![png](images/output_21_1.png)
-
-Based on the plots above it is obvious that the majority of people favor a gun law regardless of whether or not they own a gun. However, more people oppose a gun law if they own a gun.
-
-Now, I want to investigate correlation. However, almost all of my response variables are categorical so instead of using the typical Pearson's correlation coefficient I am going to use the Cramer's V statistic, which measures association between categorical variables using a chi-squared test.
-
-Because there are so many features instead of calculating Cramer's V for every pair of variables, I am going to calculate Cramer's V for every feature with gunlaw (our response variable).
-
-
-![png](images/output_25_0.png)
-
-
-The resulting top Cramer's V statistic features make a lot of sense.
-
-* gunlaw has an association of 1 with itself
-* Some other interesting top features include:
-  * rifle (if they own a rifle)
-  * hunt (if they hunt)
-  * partyid
-  * owngun (if they own a gun)
-  * helpnot (Should federal govt do more or less?)
-  * numwomen (Number of female sex partners since 18)
-  * natrace (Improving the conditions of blacks)
-  * natenvir (Improving & protecting environment)
-  * sexsex (Sex of sex partners in last year)
-  * polviews (Think of self as liberal or conservative)
-  * helppoor (Should govt improve standard of living?)
-  * sex
-
-Many of these features I assumed would be associated with opinions on gun control, such as hunt and partyid. The more suprising high associations are helpnot and numwomen.
-
-## Encode Categorical Variables
-
-All of the GSS features are categorical responses coded as numbers. Although the variables are already encoded as numbers, these numbers cannot be passed into the models because it will consider 6 to be higher than 5, when it simply means a different category and there is no order.
-
-As a result, I will use one-hot encoding to make dummy variables of each possible response and use those instead as my features. Dummy variables make a column for each possible response and place a 1 in the row if the respondent responded that and 0 otherwise.
-
-
-The resulting dummified dataset looks like this:
-
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>abany_1.0</th>
-      <th>abany_2.0</th>
-      <th>abdefect_1.0</th>
-      <th>abdefect_2.0</th>
-      <th>abhlth_1.0</th>
-      <th>abhlth_2.0</th>
-      <th>abnomore_1.0</th>
-      <th>abnomore_2.0</th>
-      <th>abpoor_1.0</th>
-      <th>abpoor_2.0</th>
-      <th>...</th>
-      <th>zodiac_11.0</th>
-      <th>zodiac_12.0</th>
-      <th>zodiac_2.0</th>
-      <th>zodiac_3.0</th>
-      <th>zodiac_4.0</th>
-      <th>zodiac_5.0</th>
-      <th>zodiac_6.0</th>
-      <th>zodiac_7.0</th>
-      <th>zodiac_8.0</th>
-      <th>zodiac_9.0</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>0</td>
-      <td>1</td>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>...</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>0</td>
-      <td>1</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>...</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>5</th>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>...</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>6</th>
-      <td>0</td>
-      <td>1</td>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>...</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>7</th>
-      <td>0</td>
-      <td>1</td>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>...</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-    </tr>
-  </tbody>
-</table>
-<p>5 rows × 16935 columns</p>
-</div>
-
-    The shape of the dummified dataset is (14545, 16935)
-
-So the dummified dataset has many features, 16935 to be exact because each original feature gets broken up into multiple depending on the responses.
-
-The dataset still has the same number of overall responses - 14545 total responses.
-
-## Split Data
-
-Now that we have our data cleaned and concatenated we will split the data into the training, validation, and test sets.
-
-The breakdown will be 60% for training, 20% for validation, and 20% for testing.
-
-![png](images/output_38_0.png)
-
-
-## Fit Logistic Regression Model
-
-First, I am going to try out a logistic regression model for this use case.
-
-I chose to use logistic regression because the response variable is either 0 (favor gun control) or 1 (oppose gun control). Logistic regression is the appropriate regression analysis to conduct when the dependent variable is dichotomous (binary) because it outputs the probability of either 0 and 1 and using a cutoff you can classify the predictions into either group.
-
-    The score of the logistic regression model on the training set is  0.987166265612467
-
-    The score of the logistic regression model on the validation set is  0.7222413200412513
-
-                            precision    recall  f1-score   support
-
-     class 0: favor gunlaw       0.81      0.83      0.82      2217
-    class 1: oppose gunlaw       0.41      0.38      0.39       692
-
-                  accuracy                           0.72      2909
-                 macro avg       0.61      0.60      0.61      2909
-              weighted avg       0.71      0.72      0.72      2909
-
-Above is the classification report of the logistic regression model on the validation set.
-
-Precision is the ability of a classifier not to label an instance positive that is actually negative.
-
-  * The precision rate is pretty high for class 0: favor gunlaw (0.81) and about half for class 1: oppose gunlaw (0.83).
-  * So the precision rate 0.81 for class 0: favor gunlaw means when a response is actually in class 1: oppose gunlaw, we classify it as class 0 only 0.19 of the time.
-
-Recall is the ability of a classifier to find all positive instances.
-
-  * The recall value for class 0: favor gunlaw is 0.83, meaning that 83% of the time a response is in that class, we label it as such.
-  * As you can see, the recall value for class 1: oppose gunlaw is lower at 0.38, meaning the fraction of those that are truly within this class that we got right and classified as class 1 is only 38%.
-
-Obviously, the classifier is better at classifiying class 0: favor gunlaw - likely because the majority of the data falls within this category so its able to learn it better. Because the classes are imbalanced it is important to look at precision and recall scores, not just accuracy because a very imbalanced model can have a high accuracy without generalizing well.
-
-Our model with high precision but lower recall for class 1: oppose gunlaw returns very few results, but most of its predicted labels are correct when compared to the test labels.
-
-![png](images/output_45_0.png)
-
-
-The plot of the confusion matrix above shows that for the original logistic regression model:
-
-* the number of True Positives is: 1841
-* the number of False Positives is: 376
-* the number of False Negatives is: 432
-* the number of True Negatives is: 260
-
-This plot shows similar information to the classification report and shows this model is better at predicting class 0: favor gunlaw. I think this is because the majority of people favor gunlaw so the original data is imbalanced.
-
-![png](images/output_47_0.png)
-
-The ROC curve above shows the tradeoff between the True Positive Rate (y-axis) and the False Positive Rate (x-axis). The closer this curve comes to the 45 degree diagonal, which indicates no predictive power, the worse its performance.
-
-The Area Under the Curve (AUC) value is also shown on the plot as 0.68. The higher the AUC the better because it indicates more distance from the 45 degree diagonal and more predictive power.
-
-Let's see how the model does with cross validation. Cross validation allows us to test out how our model may generalize to unseen data without using the test set. It does this by breaking the training data into k-folds and using one of the folds as a pseudo-test set.
-
-	The cross validation score of the logistic regression is  0.72945978856297
-
-The cross validation score is comparable to how the model performed on the validation set.
-
-## Fit Random Forest Classifier
-
-A random forest classifier combines many decision trees into a single model that decides on an output - either 0 or 1.
-
-Decision trees learn from data to approximate a sine curve with a set of if-then-else decision rules. The deeper the tree, the more complex the decision rules and the fitter the model. By using many decision trees in a random forest classifier you can achieve increased accuracy.
-
-    The score of the random forest model on the train set is  1.0
-
-    The score of the random forest model on the validation set is  0.7641801306290822
-
-
-Although this model has a higher accuracy score we need to consider other metrics, such as precision and recall, to determine if this is just a result of the imbalanced classes.
-
-                            precision    recall  f1-score   support
-
-     class 0: favor gunlaw       0.76      1.00      0.87      2217
-    class 1: oppose gunlaw       0.71      0.01      0.03       692
-
-                  accuracy                           0.76      2909
-                 macro avg       0.74      0.51      0.45      2909
-              weighted avg       0.75      0.76      0.67      2909
-
-
-The classification report for the random forest classifier is shown above.
-
-Precision:
-
-  * The precision rates for each class is fairly high, meaning that when a response does not fall within a class, we missclassify it as that class rarely.
-  * So the precision rate 0.76 for class 0: favor gunlaw means when a response is actually in class 1: oppose gunlaw, we classify it as class 0 only 0.34 of the time
-
-Recall:
-
-  * The recall value for class 0: favor gunlaw is 1, meaning that every time a response is in that class, we label it as such.
-  * As you can see, the recall value for class 1: oppose gunlaw is very low, meaning the fraction of those that are truly within this class that we got right and classified as class 1 is only 1% - pretty low.
-      * This classifier pretty much classifies everything as class 0: favor gunlaw and although this results in relatively high accuracy (because the dataset is imbalanced) this is a problem for when you want to apply this model to never before seen data.
-
-Obviously, the classifier is better at classifiying class 0: favor gunlaw because the majority of the data falls within this category. However, this classification report shows that this model is heavily influenced by the imbalanced classes and classifies almost every data point as class 0: favor gunlaw. Although yes this is what it learned from the data, that makes this model less generalizable than the previous logistic regression model.
-
-This model definitely trades precision for recall, however it is important to have a good balance. This high precision is likely just because of the imbalanced data.
-
-![png](images/output_58_0.png)
-
-The plot of the confusion matrix above shows that for the original random forest classifier:
-
-* the number of True Positives is: 2213
-* the number of False Positives is: 4
-* the number of False Negatives is: 682
-* the number of True Negatives is: 10
-
-The model has very low FP and TN values. The low FP count means that the model rarely classifies someone as favoring gun control when they do not, but the low TN count indicates that we correctly identify those that oppose gun control rarely.
-
-The high number of mistakes for class 1: oppose gunlaw is concerning. It appears that this model may have overfit and instead of capturing the true underlying differences in the data, is almost always classifying every person as class 0: favor gunlaw.
-
-This plot once again shows that the model is far better at predicting class 0: favor gunlaw because that is the true value for the majority of the points. However, this model has an even larger imbalance between the performance on the classes than the logistic regression model.
-
-![png](images/output_60_0.png)
-
-
-Like I explained earlier, the closer the ROC curve (shown above) comes to the 45 degree diagonal, which indicates no predictive power, the worse its performance.
-
-The Area Under the Curve (AUC) value for this original random forest classifier is 0.73, which is slightly higher than the AUC value for logistic regression (0.67). The higher the AUC the better because it indicates more distance from the 45 degree diagonal and more predictive power.
-
-The cross validation score for this model is shown below. Although the value is slightly higher than the cross validation score for the logistic regression model, I am still concerned about the low recall score for this model.
-
-	The cross validation score of the random forest model is  0.7647532961135891
-
-Although the cross validation score for this model is higher than the logistic regression model this model has a huge imbalance between precision and recall, which is not desired.
-
-## Perform Grid Search
-
-Grid search tests multiple combinations of parameters and determines the resulting model with the highest accuracy. Therefore, we can use that model with the tuned parameters.
-
-### Grid Search for Logistic Regression
-
-Let's see if grid search improves the perfomance of the logistic regression model. The grid search results are shown below.
-
-	Best Penalty: l1
-	Best C: 1.0
-
-	The score of the best logistic regression model on the validation set is  0.7315228600893778
-
-                            precision    recall  f1-score   support
-
-     class 0: favor gunlaw       0.81      0.85      0.83      2217
-    class 1: oppose gunlaw       0.42      0.36      0.39       692
-
-                  accuracy                           0.73      2909
-                 macro avg       0.62      0.61      0.61      2909
-              weighted avg       0.72      0.73      0.72      2909
-
-
-After performing grid search, the logistic regression model improved very slightly, but still much less imbalanced than the random forest model. Therefore, I will likely move forward with this model.
-
-![png](images/output_72_0.png)
-
-The tuned model seems to perform very similarly to the previous logistic regression model with an AUC of 0.68.
-
-### Grid Search for Random Forest
-
-Let's see if we can decrease the imbalance of errors by tuning the random forest using grid search, meaning testing multiple hyperparameter combinations. The grid search results are shown below.
-
-    Best max depth: 3
-    Best max features: 3
-    Best min samples split: 3
-    Best number of estimators: 100
-
-    The score of the best random forest model on the validation set is  0.7621175661739429
-
-                            precision    recall  f1-score   support
-
-     class 0: favor gunlaw       0.76      1.00      0.87      2217
-    class 1: oppose gunlaw       0.00      0.00      0.00       692
-
-                  accuracy                           0.76      2909
-                 macro avg       0.38      0.50      0.43      2909
-              weighted avg       0.58      0.76      0.66      2909
-
-Grid search did not improve the imbalance of errors. In fact, now both precision and recall for class 1: oppose gunlaw are 0. This means the model is likely classifying everything as class 0: favor gunlaw.
-
-![png](images/output_81_0.png)
-
-The tuned mode actually performs worse than the original with an AUC value of 0.60.
-
-## Look at Feature Importances from Random Forest Model
-
-A great feature of random forest models is that you can access the importance of each of the features. Using the relative importances we can see which features contribute the most to someone's stance on gun control.
-
-![png](images/output_85_0.png)
-
-The top 50 most important features make a lot of sense.
+# Predicting Gun Violence by State
 
-Some of the common themes are:
+## Introduction
 
-  * owngun (whether or not you own any gun)
-  * rifle (whether or not you own a rifle)
-  * shotgun (whether or not you own a shotgun)
-  * hunt (whether or not you hunt)
-  * pistol (whether or not you own a pistol)
-  * sex
-  * partyid
-  * polviews (Think of self as liberal or conservative)
+---
 
-Some more interesting top features include:
+### **Question: What influences gun violence in different states?**
 
-  * nateduc_3: govt spending too much on national education
-  * numwomen_0: 0 female sex partners since age 18
-  * srcbelt_6: Other rural (where interview took place)
-  * natchld_1: govt spending too little on assistance for childcare
-  * natrace_3: govt spending too much on imporoving the conditions of black people
-  * cappun_1: favor death penalty
-  * granborn_4: 4 grandparents born outside of US
-  * natmass_1: govt spending too little on mass transportation
-  * fear_2: not afraid to walk at night in neighborhood
-  * conpress_3: hardly any confidence in the press
-  * courts_2: the courts are not harsh enough when dealing with criminals
-  * helpblk_5: govt should not give special treatment to black people
-  * xnorcsiz_10: interview took place in open country
-  * natarms_1: govt spending too little on the military, armaments and defense
+Our project focused on studying the various factors contributing to gun violence occurring in the United States. We analyzed trends of gun violence in different states and observe factors like state laws, public sentiment towards gun control, gun purchase data, and more to develop an empirical understanding of what influences gun violence.
 
-Now that we have the most important features, we can see the key differences between those that favor gun control and those that oppose.
+Our initial data was drawn from the Gun Violence Archive$^1$, which includes a collection of U.S. gun violence incidents from over 2,000 sources from the years 2014 to 2016. This includes a multitude of datasets on mass shootings, accidental killings by age, and more all grouped by state and county. We began by adding all of these features into one data frame and normalizing them by population. 
 
-## Tuned Logistic Regression Performance on Test Set
+In this write-up, we will analyze our methodology and findings regarding gun violence influence.
 
-Our tuned logistic regression model seems to be the best overall model so let's evaluate how it performs on the test set.
+## Motivation
 
-    The score of the best logistic regression model on the test set is  0.732897903059470
+---
 
-                            precision    recall  f1-score   support
+Gun violence has increasingly become a problem in the United States. In the United States, 73% of homicides are committed using guns, compared to the 39% in Canada, and the 4% in the U.K.²  Gun-related deaths in America are increasingly a problem, especially compared to other leading global countries.
 
-     class 0: favor gunlaw       0.80      0.86      0.83      2211
-    class 1: oppose gunlaw       0.43      0.34      0.38       698
+While gun violence remains high in the U.S., attitudes towards guns remain contrary. In 2020, approximately 60% of respondents desired stricter gun laws, and less than 10% of respondents wanted less strict gun laws. This is a testament to the growing public awareness of gun violence, and the public's desire to see gun reform.² 
 
-                  accuracy                           0.73      2909
-                 macro avg       0.62      0.60      0.60      2909
-              weighted avg       0.71      0.73      0.72      2909
+Ultimately, these two points, the increase in gun violence in the U.S., and growing anti-gun sentiment in America sprouted our interest in studying the relationship between the two. In this report, we will utilize public sentiment and other factors various factors to analyze their respective influences on gun violence. 
 
+## Variable Classification
 
-The classification report shows that the final logistic regression model is less sensitive to the class imbalance than the random forest classifier.
+---
 
-For class 0: favor gunlaw:
+Before diving into our data analysis, we have defined the variables we used below.  Our data is indexed by state and year, so each of the following variables is aggregated by these two indices. 
 
-* the precision rate is 0.8 (high)
-* the recall rate is 0.86 (also high)
+[Variable](https://www.notion.so/856be88f1b244e728192b12815cd040d)
 
-For class 1: oppose gunlaw:
+In addition to these variables, we had several more variables that were used to understand the breakdown of gun law categories by state. The following categories were column names in our dataframe, and their values contained the number of gun laws pertaining to that category.
 
-* the precision rate is 0.43
-* the recall rate is 0.34
-    * although both of these values are lower than for class 0: favor gunlaw these numbers indicate that the model is performing better on class 1 than with the random forest classifier
+So, for example, if Alaska had 6 laws about background checks, then the value at that cell would be 6. The law categories were found from the RAND State Firearm Law Database$^4$, and were broken up into the following categories: 
 
-The final model performs fairly well on the test set, by having a high overall accuracy of 0.73, but also having reasonable precision and recall numbers for each class.
+1. background checks 
+2. carrying a concealed weapon (ccw)
+3. castle doctrine 
+4. child access laws
+5. dealer license 
+6. firearm removal at scene of domestic violence 
+7. firearm sales restrictions 
+8. firearms in college/university 
+9. local laws preempted by state
+10. minimum age 
+11. open carry 
+12. permit to purchase 
+13. prohibited possessor 
+14. registration 
+15. required reporting of lost or stolen firearms 
+16. safety training required 
+17. waiting period  
 
-![png](images/output_91_0.png)
+Counting the number of laws per state in each of these categories is not the best proxy for how restrictive the laws themselves are. However, this was the simplest way for us to try to quantify law strictness in each of these categories. Additionally, by counting the number of laws per state, we are able to create a numerical variable that will allow us to create data visualizations and models.
 
+## Gun Archive Exploratory Data Analysis
 
-The plot of the confusion matrix above shows that for the original random forest classifier:
-* the number of True Positives is: 1894
-* the number of False Positives is: 317
-* the number of False Negatives is: 460
-* the number of True Negatives is: 238
+---
 
-These numbers are very similar to how the model performed on the validation set which is a good sign that this is the performance we can expect when the model is applied to future unseen data.
+As a first step, to understand the trends and patterns in our data, we began our analysis with simple visualizations. This included comparing certain features across different states to better understand the differences between states as well as plotting correlations to visually demonstrate the importance of various features in predicting the gun death rate. 
 
-This model has a relatively good balance between the different errors, which is promising. The high number of True Positives indicates that the model is very good at classifying those as class 0: favor gunlaw, when they do. But this model has a reasonably high value of True Negatives meaning we classify more people as class 1: oppose gunlaw, when they actually do then we did with the random forest classifier.
+The first visualization we crafted was a pie chart showing the percentage breakdown of shootings by state. The highest rates of shootings are in California (11.99%) and Illinois (9.15%), then Florida (7.36%) and Texas (6.41%). This shows that these states accounted for a significant chunk of all shootings in America. 
 
-This plot once again shows that the model is far better at predicting class 0: favor gunlaw because that is the true value for the majority of the points. However, this model performs better on class 1: oppose gunlaw, which is the balance we are trying to strike.
+Empirically, this makes sense, 3 of these 4 states are the highest populated states in the country. That being said, it is valuable to adjust the rates of shootings by population, as it is likely that states with higher populations will experience more gun violence.
 
-![png](images/output_93_0.png)
+![Legal%20Studies%20123%20-%20Data%20Investigation%20Project%20Pre%200406a2134e08425da0a9294029e10c30/Untitled.png](Untitled.png)
 
+Adjusting the shooting rates by a state's population paints a different picture. As shown in the bar chart below, the rate of shootings per capita is starkly different from pure number of shootings.
 
-The AUC is 0.67 for this model applied to the test set, which is comparable to its performance on the validation set, a good sign for generalizability.
+![Legal%20Studies%20123%20-%20Data%20Investigation%20Project%20Pre%200406a2134e08425da0a9294029e10c30/Untitled%201.png](Untitled%201.png)
 
-Although this AUC is lower than the AUC for the random forest classifier this model has higher recall scores, which is important.
+After adjusting for population, the story becomes different. Illinois remains in the top 3 for shootings per capita per state. D.C. and Louisiana come in next, claiming the 2nd and 3rd highest number of shootings per capita.
 
-## Conclusion
+The states with the most shootings, California, Florida, and Texas, sink to around the average or lower when accounting for population, indicating **population is the central factor i**n the explanation for the number of shootings that occur in a state, but not the only factor.
 
-The question we aimed to answer is: **Can we build a model to predict someone's stance on gun control?**
+One empirical hypothesis for why D.C. leads in proportional shootings is that D.C. is a very dense metropolitan area. Unlike states that have a mix of city and rural areas, Washington D.C. is the American capital, and mostly only contains densely populated city spaces serving government and metropolitan needs. Further, the population of Washington D.C. fluctuates extensively, as the population mostly consists of traveling politicians and leaders.
 
-Using General Social Survey data, we built two accurate models, a logistic regression and a random forest classifer, to predict gunlaw: Would you favor or oppose a law which would require a person to obtain a police permit before he or she could buy a gun?
+We then looked into injuries by the state to understand how this contrasts with the percentage breakdown of shootings per capita. **The following bar graph shows a striking similarity to the pie chart above**. California, Florida, and Illinois are the leaders in total injured across states, and these states were also the leaders in shootings per state. Once again, the population-adjusted analysis would be a useful next step here.
 
-  * Favor: 0
-  * Oppose: 1
+Logically, this correlation makes sense, as the number of shootings should correlate closely to the number of injuries in a state. 
 
-Both logistic regression and random forest classifiers can make binary predictions of someone's stance on gun laws so these models were appropriate to use. Perhaps to further avoid overfitting more feature selection could have been conducted.
+![Legal%20Studies%20123%20-%20Data%20Investigation%20Project%20Pre%200406a2134e08425da0a9294029e10c30/Untitled%202.png](Untitled%202.png)
 
-Although both models had similar accuracies, the logistic regression had a better precision-recall tradeoff, which seemed to be less skewed by the class imbalance in the data. Used on the test set the final logistic regression model had an accuracy of about 0.73.
+Finally, in order to account for population, we created a map graph detailing gun death rate by state. Below, this map helps us geographically visualize the gun death rates across states. 
 
-We used the random forest classifier to determine feature importances and were able to identify some of the features that were most indicative of someone's opinion on gun control. Some of the most important features included whether someone owned a gun, whether they hunted, and their party identification. However, there were some more unexpected important features such as 0 female sex partners since age 18, hardly any confidence in the press, and the courts are not harsh enough when dealing with criminals.
+Using statistics from Gifford's Law Center Gun to Prevent Gun Violence$^2$, we ranked states by their 2020 gun death rate. States in the South-Eastern part of the United States dominate the top ten rates, including Mississippi, Missouri, Alabama, and Louisiana, corroborating the above results. 
 
-Determining the strongest predictors of someone's stance on gun control is important because once we understand where these strong differences in opinions come from we can begin to understand how to combat this problem and reach more consensus.
+This is a far more accurate measure of shootings and their impacts on a state-by-state basis. This implies that some states like Illinois may have a high proportion of shootings, but they are on average more likely to be non-fatal than other states like Missouri.
 
-Knowledge like this can help inform future policy as more and more people begin to favor some form of gun control. This important information about the American electorate identifies important issues to people and where opinions may diverge, valuable information for any election.
+![Legal%20Studies%20123%20-%20Data%20Investigation%20Project%20Pre%200406a2134e08425da0a9294029e10c30/gun_death_rate.png](gun_death_rate.png)
 
-Going further this logistic regression model can be further tuned and trained with more data in order to become a more accurate predictor on unseen data. More data could help rectify the issues of class imbalance. This research, specifically the most important features, could inform future feature selection for a more refined model.
+After gaining this initial understanding of how shootings and injuries are distributed and ranked across states, we then shifted our approach to understanding different factors contributing to these metrics. Our next step was to dive into gun purchases by state and understand how gun purchases, background checks, and acquisition influenced gun violence.
+
+## Background Checks and Permits Data
+
+---
+
+We used data to understand if gun violence has an existing correlation with the number of guns being purchased, permits issued, and the number of background checks conducted. 
+
+Raw gun purchase data is inaccessible since many guns being sold by private businesses. As a result, the standard for tracking gun purchases is by using background check data from the FBI's National Instant Criminal Background Check System (NICS) to track purchases via background checks performed on each sale$^3$. 
+
+![Legal%20Studies%20123%20-%20Data%20Investigation%20Project%20Pre%200406a2134e08425da0a9294029e10c30/Untitled%203.png](Untitled%203.png)
+
+The first visualization we created was for the unadjusted number of permits issued by a state, for which Kentucky, California, and Illinois have the most.
+
+While this data is powerful and provides us some really great insight into permits and background checks, there are some important caveats about this data that need to be addressed first.
+
+1. As shown in the bar graph above, Kentucky leads in the count of total permits issued. That being said, Kentucky runs a new check on each concealed carry license holder each month, which boosts the states' numbers of annual permit issuance. This introduces bias and overrepresentation for Kentucky.
+2. A 2015 Harvard study found only 60% of respondents who purchased a gun had to undergo a background check. This implies that a significant amount of data is missing or misrepresented. 
+3. Some background checks are performed only for someone to obtain a concealed carry permit, and not to purchase a gun thereafter.
+
+Despite these caveats, as mentioned previously this NICS background check data is ultimately the foremost proxy for determining gun sales per state.
+
+From here we analyzed the ratio of permits to purchases, as this indicates the strictness of that states' purchasing laws. Essentially we wanted to see the ratio of how many permits there are to purchases for each state. The following bar graph demonstrated Hawaii and Kentucky were the highest, meaning the highest rates of purchases by permitted people occur here.
+
+![Legal%20Studies%20123%20-%20Data%20Investigation%20Project%20Pre%200406a2134e08425da0a9294029e10c30/Untitled%204.png](Untitled%204.png)
+
+With this analysis of permits and purchases completed, we then plotted the total amount of purchases per state, finding Kentucky to be the highest followed by Illinois, Texas, and California. Interestingly, Hawaii was nearly dead last, indicating they have extreme strictness in regards to purchases only coming from those with permits. 
+
+![Legal%20Studies%20123%20-%20Data%20Investigation%20Project%20Pre%200406a2134e08425da0a9294029e10c30/Untitled%205.png](Untitled%205.png)
+
+Adjusting these raw amounts of purchases for population yielded a slightly different outcome in terms of gun purchases as you can see below.
+
+![Legal%20Studies%20123%20-%20Data%20Investigation%20Project%20Pre%200406a2134e08425da0a9294029e10c30/Screen_Shot_2021-05-07_at_10.59.07_PM.png](Screen_Shot_2021-05-07_at_10.59.07_PM.png)
+
+D.C. stays on top, while Hawaii and Nebraska take 2nd and 3rd, indicating the high rate of checks in each state compared to the population. **These rankings of numbers of background checks correlate closely to the previous charts on states with the highest shootings/injuries.** This is an interesting conclusion as we begin to now analyze law strictness and see how this affects the gun death rate.
+
+## Law Strictness
+
+---
+
+In assessing the strictness of state gun laws, we relied on the previously cited Giffords Law Center to Prevent Gun Violence, as they developed a methodologically based Gun Law Scorecard. The center grades the states using a specific methodology, detailed as such:
+
+>> The attorneys track and analyze gun legislation across all states, and assign points and values based on respective strengths and weaknesses, which are then tabulated and ranked, and then finally, assigned letter grades. Sometimes, states are tied if their tabulation added up to the same score for their law strictness. After assigning each state a grade, Giffords ranks each state from 1 to 50 in terms of strictness. 
+
+Using this ranking of gun law strictness from Giffords, we created a geographic visual to analyze the law strictness and compare it to the gun death rate map shown earlier. **The maps possess striking similarities to each other as you can see below.**
+
+Law strictness rank (Scale 1 to 50): 
+
+![Legal%20Studies%20123%20-%20Data%20Investigation%20Project%20Pre%200406a2134e08425da0a9294029e10c30/law_strictness_ranking.png](law_strictness_ranking.png)
+
+Gun Death Rate Map:
+
+![Legal%20Studies%20123%20-%20Data%20Investigation%20Project%20Pre%200406a2134e08425da0a9294029e10c30/gun_death_rate.png](gun_death_rate.png)
+
+Visually, the correlation is visible between strict gun laws and their effect on gun death rates. The states that lead in gun death match Gifford's law strictness rank nearly perfectly. Below is a scatterplot demonstrating this correlation.
+
+![Legal%20Studies%20123%20-%20Data%20Investigation%20Project%20Pre%200406a2134e08425da0a9294029e10c30/Untitled%206.png](Untitled%206.png)
+
+This shows that stricter gun laws are correlated with lower gun death. The top 30 highest gun death rate states all are ranked among the weakest in terms of their strictness (C- to F range on the Giffords Grading) except for Maryland. In constructing our model, this correlation is key to selecting features in order to construct an accurate model. Following this analysis on law strictness, we wanted to observe public sentiment on gun control by analyzing data from Twitter.
+
+## Twitter Sentiment Analysis
+
+---
+
+In order to augment our analysis, we considered incorporating tweets on gun violence and gun control to produce a sentiment score to use as an added feature in our model. In doing so, we hoped to find some correlation between public sentiment and the gun death rate. 
+
+To get this data, we applied to obtain a Twitter Developer License. This allowed us to access a wide variety of twitter data, including tweet content, engagement (retweets, likes), geolocation, and comments. 
+
+Twitter is a powerful data source, but before we could process any tweets, we needed to clean up the text in order to remove any special symbols such as hashtags and mentions. We applied this cleaning to the entire dataset, which gave us good baseline text to perform sentiment analysis on. 
+
+We then defined two functions: the subjectivity and the polarity of a tweet. 
+
+Subjectivity is a measure of how subjective or factual a statement is from a range of 0 to 1, where 1 is a more subjective statement. Polarity is a measure of how positive or negative a statement and is on a scale of -1 to 1 where -1 is the most negative. 
+
+Ultimately our efforts to use Twitter did not yield meaningful results. First, out of a sample of 50,000 tweets, only 1800 contained geolocation data. Furthermore the data was heavily concentrated in densely populated states such as California and New York. For smaller states such as Wyoming, there were often only a couple of tweets which contained relevant information. 
+
+Second, our methods for finding sentiment and polarity were not generalized to conversations about gun control, and thus often misclassified the tweets. This could be solved with a more robust implementation of a sentiment classifier, but given the difficulties we had in scaling the data, we ultimately decided to measure public sentiment in a different manner. 
+
+**We decided to use a ranking from the New York Times**$^5$ about how liberal or conservative each state was during the 2016 presidential election. The scale ranges from 1 to 5, 1 being the most liberal and 5 being the most conservative. Since public sentiment does not always correlate with the strictness of a state's gun laws, we hoped this would be a meaningful feature in our dataset. 
+
+Having exhausted all potential data sources to diversify our feature pool, we finally moved into developing the model itself to predict gun violence. We started first with feature selection, employing various correlation matrices to sort and select features.
+
+## Feature Selection
+
+---
+
+We started the process of selecting features by developing correlation matrices for different aspects of the data to understand how they correlate to the gun death rates. This would allow us to identify more easily which features would be most significant to create a more precise model. The first matrix we used was for the background check data from the NICS. 
+
+![Legal%20Studies%20123%20-%20Data%20Investigation%20Project%20Pre%200406a2134e08425da0a9294029e10c30/Untitled%207.png](Untitled%207.png)
+
+No stark correlations appeared with Gun Death Rate, but there was some correlation between "prepawn_handgun" and "prepawn_long_gun" which are not useful features for predicting the gun death rate. The FBI defined these as, "Background checks requested by an officially-licensed FFL on prospective firearm transferees seeking to pledge or pawn a firearm as security for the payment or repayment of money, prior to actually pledging or pawning the firearm." This is a fairly specific case of background checks and this slight correlation is thus not very meaningful or relevant to our model. 
+
+The next correlation matrix we used was for analyzing how law strictness correlates to the gun death rate.
+
+![Legal%20Studies%20123%20-%20Data%20Investigation%20Project%20Pre%200406a2134e08425da0a9294029e10c30/Screen_Shot_2021-05-07_at_8.31.42_PM.png](Screen_Shot_2021-05-07_at_8.31.42_PM.png)
+
+We see a high correlation between how strict state laws are and the gun death rate. This is a positive sign for our model as **it demonstrates the significance state law strictness can have on lowering the gun death rate**. There is also a strong negative correlation between "Grade 2019" and Gun Death Rate, which is unsurprising since more strict laws were given a higher grade, which subsequently correlated to a lower death rate. 
+
+We also see a high positive correlation between our public opinion column and the gun death rate, indicating that public opinion is another useful variable for our model. One caveat is that it is also highly correlated with the law rank and grade, leaving the potential for multicollinearity issues in our model. 
+
+Next, we looked more into how the number of each type of gun control law correlates to the gun death rate which yielded some very interesting findings. 
+
+![Legal%20Studies%20123%20-%20Data%20Investigation%20Project%20Pre%200406a2134e08425da0a9294029e10c30/Untitled%208.png](Untitled%208.png)
+
+The notable negative correlations are "Required Reporting of Lost or Stolen Firearms" and "Safety Training Required", along with "Firearm Sales Restrictions". All of these are stronger than -0.5 and indicate these laws are statistically significant when more of them are passed to reduce the gun death rate. These will help in strengthening our model and helping draw more nuanced conclusions on which types of gun control laws in particular help reduce gun violence.
+
+### Correlation between variables
+
+To expand on the big correlation matrices, we wanted to find which types of gun laws have the strongest correlation with reduced death rates. We found that the laws most likely to reduce the gun death rate include laws pertaining 
+
+1) reporting lost or stolen firearms
+
+2) required safety training
+
+3) prohibiting certain gun possessors. 
+
+The following boxplots and scatter plots show the spread of death rates for states that have different numbers of laws in each category.  
+
+![Legal%20Studies%20123%20-%20Data%20Investigation%20Project%20Pre%200406a2134e08425da0a9294029e10c30/Screen_Shot_2021-05-07_at_8.54.42_PM.png](Screen_Shot_2021-05-07_at_8.54.42_PM.png)
+
+![Legal%20Studies%20123%20-%20Data%20Investigation%20Project%20Pre%200406a2134e08425da0a9294029e10c30/Screen_Shot_2021-05-07_at_9.22.53_PM.png](Screen_Shot_2021-05-07_at_9.22.53_PM.png)
+
+![Legal%20Studies%20123%20-%20Data%20Investigation%20Project%20Pre%200406a2134e08425da0a9294029e10c30/Screen_Shot_2021-05-07_at_6.40.31_PM.png](Screen_Shot_2021-05-07_at_6.40.31_PM.png)
+
+We found that for some law categories, there is very little correlation between gun death rate and the number of laws in that category. Some of these types of laws include laws pertaining to 1) waiting periods between purchasing a firearm and taking ownership of it and 2) open carry laws. 
+
+![Legal%20Studies%20123%20-%20Data%20Investigation%20Project%20Pre%200406a2134e08425da0a9294029e10c30/Screen_Shot_2021-05-07_at_6.47.24_PM.png](Screen_Shot_2021-05-07_at_6.47.24_PM.png)
+
+![Legal%20Studies%20123%20-%20Data%20Investigation%20Project%20Pre%200406a2134e08425da0a9294029e10c30/Screen_Shot_2021-05-07_at_9.01.46_PM.png](Screen_Shot_2021-05-07_at_9.01.46_PM.png)
+
+There are some law categories that are positively correlated with the gun death rate, meaning that the more laws that exist in that category, the more deaths per population. One of these categories is laws pertaining to carrying a concealed weapon. The following boxplot shows this positive correlation. This is an example of one weakness of our data that we mentioned previously, that the sheer counts of laws in each category are not a perfect proxy for the strictness and detailing of the laws themselves. 
+
+![Legal%20Studies%20123%20-%20Data%20Investigation%20Project%20Pre%200406a2134e08425da0a9294029e10c30/Screen_Shot_2021-05-07_at_8.55.34_PM.png](Screen_Shot_2021-05-07_at_8.55.34_PM.png)
+
+In addition to the analysis of gun law categories, we plotted correlations between gun death rate and several other variables. The following plot shows the gun death rate plotted against the ratio of permits to total purchases. We hoped that this metric of permits/purchases would be an additional metric with which to measure gun law strictness and adherence. 
+
+![Legal%20Studies%20123%20-%20Data%20Investigation%20Project%20Pre%200406a2134e08425da0a9294029e10c30/Screen_Shot_2021-05-07_at_9.17.20_PM.png](Screen_Shot_2021-05-07_at_9.17.20_PM.png)
+
+This analysis shows that there is a slight negative correlation, with many points clustered around (0.1, 15). This is an indication that there may be a correlation between Gun Death Rate and Permits — as the number of permits increases, gun death rate goes down. 
+
+With this feature selection analysis completed, we will now shift into how we developed our model based on this understanding and how we fine-tuned it to create a predictor of gun death rate based on the data we collected. 
+
+## Model
+
+---
+
+Our project is studying the various factors contributing to gun violence in the U.S. We executed this study by trying to find a correlation between a numerical variable (the gun death rate) and the strictness of gun laws in that state. Additional variables that we used to predict the gun death rate include population, the total number of people injured by gun violence in that year, and the number of gun-related background checks done in that year. The background check data is used as a proxy for gun purchases since there is incomplete data about gun purchases across states. 
+
+Since we are predicting on a numerical variable using other numerical variables as features, we can model this as a regression problem using supervised methods. We utilize several models, employing feature engineering to improve our results.
+
+### Measures of Significance
+
+For our models we will be using two main measures to explain the validity of our model. 
+
+*Root Mean Square Error*: RMSE is a measure which calculates the average distance between the predicted points from the target points. This is also a measure of the spread of the residuals. A good model will have a relatively low RMSE scaled to the target variable, as the predicted points will be more concentrated around the line of best fit. 
+
+*R^2:* R^2 is a measure of the statistical correlation between two variables. In this case, we are measure our model's predicted points on the target variable; in other words, the correlation between the model and the target values. R^2 is measured from 0 to 1, and a value closer to 1 is considered. 
+
+### Initial Attempt at a Model
+
+Our first attempted model illustrated the validity of linear regression for the dataset. This iteration allowed us to better select data and features based on the findings. We started with simple linear regression and used Principal Component Analysis to determine the collinearity of the dataset.
+
+### **Linear Regression**
+
+Linear Regression is a type of predictive analytics that can help us predict whether a certain set of predictor variables can reasonably determine an outcome. In this linear regression model, we are using the shootings table to predict gun death rate outcomes.
+
+![Legal%20Studies%20123%20-%20Data%20Investigation%20Project%20Pre%200406a2134e08425da0a9294029e10c30/Untitled%209.png](Untitled%209.png)
+
+As we can see, the graph of the residuals appears relatively random around the $y=0$   axis. This is an important finding, as it suggests that linear regression is an appropriate choice of model. We can see that the spread in the horizontal direction is relatively even, and there is a slight outlier towards the bottom. This also suggests that accuracy can be improved, as the most likely scenario explaining this is that a variable is missing in the model (more on this later). 
+
+### **PCA and Feature Selection**
+
+PCA is an algorithm used to perform dimensionality reduction on the dataset. It's often used to speed up training algorithms by encapsulating most of the data in a lower dimension and can also help show which features are most impactful in our model. Ideally, this approach will help reduce overfitting and lower the variance in our model caused by the presence of too many features.
+
+![Legal%20Studies%20123%20-%20Data%20Investigation%20Project%20Pre%200406a2134e08425da0a9294029e10c30/Screen_Shot_2021-05-07_at_9.15.10_PM.png](Screen_Shot_2021-05-07_at_9.15.10_PM.png)
+
+Above, we can see the explained variance in the data according to PCA. This graph shows us the relationship between explained variance and the number of components. In order to explain 80% of the variance in our dataset, we only need to use around 10 components. Based on this finding, we can specify specific features that we want to use to test our model. 
+
+In creating our models, we selected features according to the correlation matrix shown earlier. These included : ['Year', 'Laws Rank', 'Injured in Shootings Total', 'Grade 2019', 'permit', 'totals', 'POPESTIMATE2015', 'Gun Death Rate']. 
+
+---
+
+![Legal%20Studies%20123%20-%20Data%20Investigation%20Project%20Pre%200406a2134e08425da0a9294029e10c30/Screen_Shot_2021-05-07_at_9.25.09_PM.png](Screen_Shot_2021-05-07_at_9.25.09_PM.png)
+
+As we can see from the plot of the residuals, the values appear to have a linear pattern to them. They aren't randomly scattered around the horizontal axis and instead have a negative slope, suggesting that collinearity is still an issue in our model. The RMSE for this model was 3.78 and the $Rˆ2$ was 0.60. This high $Rˆ2$ indicates that the model is working fairly well, but requires finer tuning and iteration. 
+
+### Tuning and Final Model
+
+The key finding from our initial attempt at a model was that our original data had a lot of collinearity with gun violence rates, and the best features included gun law data and sales. Based on these findings, we collected new data that included the number of laws regarding various parameters such as background checks, open carry laws, minimum age, safety training requirements. 
+
+### **Linear Regression**
+
+After incorporating the new data from above, we used PCA to determine the lowest dimensionality to explain the variance using the gun laws as the highest weighted features. Using these new parameters, we were able to fit a linear regression with a validation RMSE of 2.7487524616344285 and $Rˆ2$  of 0.71. The residual graph also showed promise, as it was very randomly scattered around the horizontal axis with a good spread. There was only one outlier in the bottom right which did not impact the results too much but would be worth looking into in future studies. 
+
+![Legal%20Studies%20123%20-%20Data%20Investigation%20Project%20Pre%200406a2134e08425da0a9294029e10c30/Screen_Shot_2021-05-07_at_9.46.45_PM.png](Screen_Shot_2021-05-07_at_9.46.45_PM.png)
+
+### **Testing the Model**
+
+Once we were happy with the model on the test results, we ran the model on the test set. Ultimately our test RMSE was 1.84 and our test $R^2$  was 0.906. Our model was highly correlated with the target variable, gun violence rates, and our error was relatively small. Our model is pretty accurate! We were able to fit a good linear model to predict gun violence rates in states using the metrics we identified. For more discussion on the impact of these findings, see the conclusions section below. 
+
+## Conclusions
+
+---
+
+From our analysis, we have reached several conclusions. 
+
+The first is that **states with stricter laws have significantly lower death rates** than states with less strict laws. More specifically, we see a high correlation between several types of gun laws and a low death rate. The laws with the highest correlation include laws that target prohibited possessors, required safety training, required reporting of lost or stolen firearms, and additional sales restrictions. 
+
+This leads us to recommend that **states increase their laws in these categories specifically to see a decrease in gun-related deaths**. For the most part, these categories are effective at preventing weapons from falling into the wrong hands, and consequently, it makes intuitive sense that these laws also decrease the death rate. These categories are likely to float in the legislature, as they are also amenable to the viewpoint of both gun-reform activists and pro-gun citizens. Specifically, these laws do not prevent the average person from gaining access to a gun if they so desire. They do however make it more difficult for ill-fit individuals to access guns.
+
+Conversely, from our brief and incomplete analysis, we found that there are several categories that do not appear to have much of an impact on the death rate by firearms. Laws pertaining to openly carrying firearms and waiting periods before a gun owner may have access to their gun have **almost no impact on the gun death rate**. Perhaps then, states may choose to relax these restrictions, which the data suggest would likely have little impact on the death rate by firearm.
+
+We also found several law categories that were positively correlated with the death rate, indicating that in some cases, **more restrictive laws lead to more deaths by gun**. Though we are skeptical logically of that conclusion, our data does point to this conclusion, especially for the category of carrying a concealed weapon. This correlation in our data is an indication that our sample size is relatively small (n=50), and that the **number of laws in a category is not a proper approximation** for the strictness of a state's laws. 
+
+For our problem, **a linear model with PCA dimensionality reduction proved to be the model with the best results.** We were able to achieve the highest r^2 score and lowest RMSE with this model. However, our model was still far from perfect. This indicates that there are many more factors that influence gun death rates than we can account for in this analysis. Many social and institutional factors have a great influence on the gun death rate, and as a result, it is impossible for us to have definitive conclusions and recommendations for lawmakers given our work on this project. 
+
+## Risks
+
+---
+
+There are several risks inherent to our driving question and work so far. We have outlined several of them below. 
+
+We must consider the ethics of misrepresenting states based on actual shooting occurrences, rather than based on proportionate occurrences to population. For example, given a large population size, California would likely have more shootings than a rural state. Therefore, if we don't visualize this using population data, California will be misrepresented at the top.
+
+This data encapsulates shootings reported, not shootings and crime that actually occurred. This likely creates a misrepresentation where uncounted crime creates data skew.
+
+This data measures counts based on "killed" and "injured". It is not updated with people who died later (months, years, etc.) from complications.
+
+The Giffords methodology for assessing and ranking each state's gun laws is not made public and instead only decided and known by their team of attorneys. Gaining more insight into how they assign points and tabulate all the states could be supplemented with methodologies from other sources to strengthen the legitimacy of this. 
+
+## Next Steps for Further Investigation
+
+---
+
+Given more time to dig deeper into this project, there are several opportunities for future work to consider. Collecting data is the most difficult part of analyzing this topic, so reaching out to government agencies/businesses to gain access to private data, potentially paying for it, would help a lot in strengthening correlations and solving some of our sample size issues. The background checks conversion to gun purchases could be tackled in a more complex way as well. A complex Swedish research paper titled "The Small Arms Survey" introduced in a 98 page paper a methodical way to convert background checks in a 1.1 ratio, but implementing this would require far more time and complexity than the scope of this class. Further, our data was limited by the time frame of some datasets, as the Gun Violence Archive only ranged from 2014 - 2016. We did have updated, larger timeframe data for our background checks and strictness data, meaning more range on the data from the Gun Violence Archive (number of shootings/killings/injuries) could be useful in contextualizing with the other datasets more.
+
+## Questions for Researchers and Investigators to Consider Further
+
+---
+
+1. Evaluate the biases of this model
+    1. How can the models be adjusted to minimize over and under-fitting?
+    2. What is the false positive, false negative, true positive, and true falsie rate?
+    3. Where is the data prejudiced?
+    4. How can we reduce multicollinearity in our models?
+    5. How does this data misrepresent certain states?
+2. How can a shorter or longer time period evaluated affect predictive results? Will certain events (ex: the polarized election of Donald Trump to Presidential office) affect results? How do events and media coverage change sentiment? How often do polarity and public viewpoint on guns change?
+3. How can gun purchase data and background checks provide another layer of information? Since general sales data is difficult to draw conclusions with, how can we take individual gun purchases and compare them with background checks to understand overall attitudes towards guns?
+4. How can twitter data be a strong point in this analysis? Is it a strong enough data source to provide sensitivity analysis and polarity evidence? How can this be merged with or studied to extrapolate other sources of sentiment (Ex: polling data)?
+5. How can this study be used to understand the relationship between polling and Twitter activity and general sentiment? How strong or weak are the ties between Twitter data and public ideology? Where does Twitter overrepresent voices? Where does it underrepresent voices?
+6. What are the applications of a study like this that can be used to further and propel various safe carry narratives? What are the ramifications of a study like this on overall public sentiment towards gun laws? 
+
+## Appendix
+
+---
+
+Restrictions that help reduce gun death rate: 
+
+[These Three Firearm Restrictions Could Help Reduce Gun Deaths in Your State](https://www.rand.org/research/gun-policy/firearm-mortality.html)
+
+## References
+
+---
+
+1. Archive, G. (2016, November 27). Gun violence database. Retrieved May 07, 2021, from [https://www.kaggle.com/gunviolencearchive/gun-violence-database](https://www.kaggle.com/gunviolencearchive/gun-violence-database)
+2. “America's Gun Culture in Charts.” BBC News, BBC, 8 Apr. 2021, [www.bbc.com/news/world-us-canada-41488081](http://www.bbc.com/news/world-us-canada-41488081).
+3. Giffords Law Center's Annual Gun Law Scorecard. (n.d.). Retrieved May 07, 2021, from [https://giffords.org/lawcenter/resources/scorecard/](https://giffords.org/lawcenter/resources/scorecard/)
+4. BuzzFeedNews. (n.d.). Buzzfeednews/nics-firearm-background-checks. Retrieved May 08, 2021, from [https://github.com/BuzzFeedNews/nics-firearm-background-checks](https://github.com/BuzzFeedNews/nics-firearm-background-checks)
+5. Cherney, S., Morral, A., Smucker, S., & Schell, T. (2020, September 4). Development of the RAND State Firearm Law Database and Supporting Materials. Retrieved May 07, 2021, from [https://www.rand.org/pubs/tools/TLA243-2.html](https://www.rand.org/pubs/tools/TLA243-2.html).
+6. 2016 Presidential Election Results. (2017, August 19). New York Times. Retrieved May 7, 2021, from [https://www.nytimes.com/elections/2016/results/president](https://www.nytimes.com/elections/2016/results/president)
+
+# Data Sources
+
+1.   Detailed info about mass shootings - [[Gun violence database](https://www.kaggle.com/gunviolencearchive/gun-violence-database)]
+
+2.   Law strictness rankings - [[Giffords Law Center](https://giffords.org/lawcenter/resources/scorecard/) ]
+
+3.   Law categories by state - [[RAND State Firearm Database](https://www.rand.org/pubs/tools/TLA243-2.html)]
+
+4.   Public opinion - [[NYT 2016 Election Results](https://www.nytimes.com/elections/2016/results/president)]
+
+5.   Twitter data - Twitter
+
+6.   Background check data - [[NICS Firearm Checks](https://github.com/BuzzFeedNews/nics-firearm-background-checks)]
+
+7.   Population data - [[census](https://www.census.gov/data/datasets/time-series/demo/popest/2010s-state-total.html#par_textimage_1873399417)]
+
+8.   Shapefile of states for maps - [[census](https://www.census.gov/geographies/mapping-files/time-series/geo/carto-boundary-file.html)]

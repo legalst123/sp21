@@ -5,6 +5,8 @@ nav_order: 15
 description:
 ---
 
-## Marijuana Legalization Rhetorical Analysis
+[Presentation Link](presentation.html) 
 
-Presentation slides could be found [here](group10.pdf).
+[Modeling](modeling.html) 
+
+
